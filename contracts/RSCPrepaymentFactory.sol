@@ -8,6 +8,12 @@ import "contracts/RSCPrepayment.sol";
 import "contracts/RSCPrepaymentUSD.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+// Throw when Fee Percentage is more than 100%
+error InvalidFeePercentage();
+
+// Throw when creationId was already created
+error CreationIdAlreadyProcessed();
+
 contract RSCPrepaymentFactory is Ownable {
     address payable public immutable contractImplementation;
     address payable public immutable contractImplementationUsd;
@@ -89,12 +95,6 @@ contract RSCPrepaymentFactory is Ownable {
         address payable oldPlatformWallet,
         address payable newPlatformWallet
     );
-
-    // Throw when Fee Percentage is more than 100%
-    error InvalidFeePercentage();
-
-    // Throw when creationId was already created
-    error CreationIdAlreadyProcessed();
 
     constructor() {
         contractImplementation = payable(new RSCPrepayment());

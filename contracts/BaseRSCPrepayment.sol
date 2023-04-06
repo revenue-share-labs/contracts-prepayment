@@ -7,6 +7,39 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/IFeeFactory.sol";
 import "./interfaces/IRecursiveRSC.sol";
 
+// Throw when sender is not distributor
+error OnlyDistributorError();
+
+// Throw when sender is not controller
+error OnlyControllerError();
+
+// Throw when transaction fails
+error TransferFailedError();
+
+// Throw when submitted recipient with address(0)
+error NullAddressRecipientError();
+
+// Throw if recipient is already in contract
+error RecipientAlreadyAddedError();
+
+// Throw when arrays are submit without same length
+error InconsistentDataLengthError();
+
+// Throw when sum of percentage is not 100%
+error InvalidPercentageError();
+
+// Throw when distributor address is same as submit one
+error DistributorAlreadyConfiguredError();
+
+// Throw when distributor address is same as submit one
+error ControllerAlreadyConfiguredError();
+
+// Throw when change is triggered for immutable controller
+error ImmutableControllerError();
+
+// Throw when investor address is 0
+error InvestorAddressZeroError();
+
 abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     mapping(address => bool) public distributors;
     address public controller;
@@ -44,39 +77,6 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     event DistributeToken(address token, uint256 amount);
     event DistributorChanged(address distributor, bool isDistributor);
     event ControllerChanged(address oldController, address newController);
-
-    // Throw when sender is not distributor
-    error OnlyDistributorError();
-
-    // Throw when sender is not controller
-    error OnlyControllerError();
-
-    // Throw when transaction fails
-    error TransferFailedError();
-
-    // Throw when submitted recipient with address(0)
-    error NullAddressRecipientError();
-
-    // Throw if recipient is already in contract
-    error RecipientAlreadyAddedError();
-
-    // Throw when arrays are submit without same length
-    error InconsistentDataLengthError();
-
-    // Throw when sum of percentage is not 100%
-    error InvalidPercentageError();
-
-    // Throw when distributor address is same as submit one
-    error DistributorAlreadyConfiguredError();
-
-    // Throw when distributor address is same as submit one
-    error ControllerAlreadyConfiguredError();
-
-    // Throw when change is triggered for immutable controller
-    error ImmutableControllerError();
-
-    // Throw when investor address is 0
-    error InvestorAddressZeroError();
 
     /**
      * @dev Throws if sender is not distributor
