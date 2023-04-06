@@ -3,10 +3,10 @@
     "node": ">=18.12.1"
   },
   "devDependencies": {
-    "@chainlink/contracts": "^0.5.1",
-    "@nomicfoundation/hardhat-toolbox": "^2.0.0",
-    "@openzeppelin/contracts": "^4.8.0",
-    "@openzeppelin/contracts-upgradeable": "^4.8.0",
+    "@chainlink/contracts": "^0.6.1",
+    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "@openzeppelin/contracts": "^4.8.2",
+    "@openzeppelin/contracts-upgradeable": "^4.8.2",
     "@openzeppelin/test-helpers": "^0.5.16",
     "@typescript-eslint/eslint-plugin": "^5.57.1",
     "@typescript-eslint/parser": "^5.57.1",
