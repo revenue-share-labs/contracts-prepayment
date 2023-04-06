@@ -3,11 +3,14 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./BaseRSCPrepayment.sol";
 
 contract RSCPrepayment is BaseRSCPrepayment {
+    using SafeERC20 for IERC20;
+
     mapping(address => address) tokenNativeTokenPriceFeeds;
     event TokenPriceFeedSet(address token, address priceFeed);
 
@@ -188,7 +191,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
             uint256 fee = (contractBalance / 10000000) * platformFee;
             contractBalance -= fee;
             address payable platformWallet = factory.platformWallet();
-            erc20Token.transfer(platformWallet, fee);
+            erc20Token.safeTransfer(platformWallet, fee);
         }
 
         // Distribute to investor
@@ -206,7 +209,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
             uint256 investorInterest = (contractBalance / 10000000) *
                 residualInterestRate;
             amountToDistribute = contractBalance - investorInterest;
-            erc20Token.transfer(investor, investorInterest);
+            erc20Token.safeTransfer(investor, investorInterest);
             _recursiveERC20Distribution(investor, _token);
         } else {
             // Investor was not yet fully fulfill, we first fulfill him, and then distribute share to recipients
@@ -216,7 +219,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
                     _token,
                     contractBalance
                 );
-                erc20Token.transfer(investor, contractBalance);
+                erc20Token.safeTransfer(investor, contractBalance);
                 emit DistributeToken(_token, contractBalance);
                 _recursiveERC20Distribution(investor, _token);
                 return;
@@ -226,7 +229,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
                     investorRemainingAmountToken) / 10000000) *
                     residualInterestRate;
                 investorReceivedAmount += investorRemainingAmount;
-                erc20Token.transfer(
+                erc20Token.safeTransfer(
                     investor,
                     investorRemainingAmountToken + investorInterestBonus
                 );
@@ -245,7 +248,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
             uint256 percentage = recipientsPercentage[recipient];
             uint256 amountToReceive = (amountToDistribute / 10000000) *
                 percentage;
-            erc20Token.transfer(recipient, amountToReceive);
+            erc20Token.safeTransfer(recipient, amountToReceive);
             _recursiveERC20Distribution(recipient, _token);
             unchecked {
                 i++;
