@@ -133,6 +133,9 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
         } else {
             // Investor was not yet fully fulfill, we first fulfill him, and then distribute share to recipients
             if (_valueToDistribute <= investorRemainingAmountNativeToken) {
+                investorReceivedAmount += _convertNativeTokenToUsd(
+                    _valueToDistribute
+                );
                 // We can send whole _valueToDistribute to investor
                 (bool success, ) = payable(investor).call{
                     value: _valueToDistribute
@@ -141,9 +144,6 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
                     revert TransferFailedError();
                 }
                 _recursiveNativeTokenDistribution(investor);
-                investorReceivedAmount += _convertNativeTokenToUsd(
-                    _valueToDistribute
-                );
                 return;
             } else {
                 // msg.value is more than investor will receive, so we send him his part and redistribute the rest
@@ -151,6 +151,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
                     investorRemainingAmountNativeToken) / 10000000) *
                     residualInterestRate;
 
+                investorReceivedAmount += investorRemainingAmount;
                 (bool success, ) = payable(investor).call{
                     value: investorRemainingAmountNativeToken +
                         investorInterestBonus
@@ -163,7 +164,6 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
                     _valueToDistribute -
                     investorRemainingAmountNativeToken -
                     investorInterestBonus;
-                investorReceivedAmount += investorRemainingAmount;
             }
         }
 
@@ -293,12 +293,12 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
         } else {
             // Investor was not yet fully fulfill, we first fulfill him, and then distribute share to recipients
             if (contractBalance <= investorRemainingAmountToken) {
-                // We can send whole contract erc20 balance to investor
-                erc20Token.transfer(investor, contractBalance);
                 investorReceivedAmount += _convertTokenToUsd(
                     _token,
                     contractBalance
                 );
+                // We can send whole contract erc20 balance to investor
+                erc20Token.transfer(investor, contractBalance);
                 emit DistributeToken(_token, contractBalance);
                 _recursiveERC20Distribution(investor, _token);
                 return;
@@ -307,6 +307,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
                 uint256 investorInterestBonus = ((contractBalance -
                     investorRemainingAmountToken) / 10000000) *
                     residualInterestRate;
+                investorReceivedAmount += investorRemainingAmount;
                 erc20Token.transfer(
                     investor,
                     investorRemainingAmountToken + investorInterestBonus
@@ -315,7 +316,6 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
                     contractBalance -
                     investorRemainingAmountToken -
                     investorInterestBonus;
-                investorReceivedAmount += investorRemainingAmount;
                 _recursiveERC20Distribution(investor, _token);
             }
         }
