@@ -8,7 +8,7 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: "0.8.9",
+        version: "0.8.19",
         settings: {
           optimizer: {
             enabled: true,
@@ -31,6 +31,12 @@ const config: HardhatUserConfig = {
       accounts:
           process.env.PRIVATE_KEY_MAINNET !== undefined ? [process.env.PRIVATE_KEY_MAINNET] : [],
     },
+  },
+  paths: {
+    artifacts: "./artifacts",
+    cache: "./cache",
+    sources: "./contracts",
+    tests: "./tests",
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
