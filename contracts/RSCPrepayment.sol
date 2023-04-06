@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./BaseRSCPrepayment.sol";
 
-
-contract XLARSCPrepayment is BaseRSCPrepayment {
+contract RSCPrepayment is BaseRSCPrepayment {
+    using SafeERC20 for IERC20;
 
     mapping(address => address) tokenNativeTokenPriceFeeds;
     event TokenPriceFeedSet(address token, address priceFeed);
@@ -32,16 +33,18 @@ contract XLARSCPrepayment is BaseRSCPrepayment {
         uint256 _investedAmount,
         uint256 _interestRate,
         uint256 _residualInterestRate,
-        address payable [] memory _initialRecipients,
+        address payable[] memory _initialRecipients,
         uint256[] memory _percentages
     ) public initializer {
         // Contract settings
         controller = _settings.controller;
 
         uint256 distributorsLength = _settings._distributors.length;
-        for (uint256 i = 0; i < distributorsLength;) {
+        for (uint256 i = 0; i < distributorsLength; ) {
             distributors[_settings._distributors[i]] = true;
-            unchecked{i++;}
+            unchecked {
+                i++;
+            }
         }
 
         immutableController = _settings.immutableController;
@@ -54,9 +57,14 @@ contract XLARSCPrepayment is BaseRSCPrepayment {
         if (supportedErc20Length != _settings.erc20PriceFeeds.length) {
             revert InconsistentDataLengthError();
         }
-        for (uint256 i = 0; i < supportedErc20Length;) {
-            _setTokenNativeTokenPriceFeed(_settings.supportedErc20addresses[i], _settings.erc20PriceFeeds[i]);
-            unchecked{i++;}
+        for (uint256 i = 0; i < supportedErc20Length; ) {
+            _setTokenNativeTokenPriceFeed(
+                _settings.supportedErc20addresses[i],
+                _settings.erc20PriceFeeds[i]
+            );
+            unchecked {
+                i++;
+            }
         }
 
         // Investor setting
@@ -72,7 +80,10 @@ contract XLARSCPrepayment is BaseRSCPrepayment {
         }
 
         residualInterestRate = _residualInterestRate;
-        investorAmountToReceive = _investedAmount + _investedAmount / 10000000 * interestRate;
+        investorAmountToReceive =
+            _investedAmount +
+            (_investedAmount / 10000000) *
+            interestRate;
 
         // Recipients settings
         _setRecipients(_initialRecipients, _percentages);
@@ -82,67 +93,85 @@ contract XLARSCPrepayment is BaseRSCPrepayment {
      * @notice Internal function to redistribute native token based on percentages assign to the recipients
      * @param _valueToDistribute native token amount to be distribute
      */
-    function _redistributeNativeToken(uint256 _valueToDistribute) internal override {
+    function _redistributeNativeToken(
+        uint256 _valueToDistribute
+    ) internal override {
         // Platform Fee
         if (platformFee > 0) {
-            uint256 fee = _valueToDistribute / 10000000 * platformFee;
+            uint256 fee = (_valueToDistribute / 10000000) * platformFee;
             _valueToDistribute -= fee;
             address payable platformWallet = factory.platformWallet();
-            (bool success,) = platformWallet.call{value: fee}("");
+            (bool success, ) = platformWallet.call{ value: fee }("");
             if (success == false) {
                 revert TransferFailedError();
             }
         }
 
         // Distribute to investor
-        uint256 investorRemainingAmount = investorAmountToReceive - investorReceivedAmount;
+        uint256 investorRemainingAmount = investorAmountToReceive -
+            investorReceivedAmount;
         uint256 amountToDistribute;
         if (investorRemainingAmount == 0) {
             // Investor was already fulfilled and is now receiving residualInterestRate
-            uint256 investorInterest = _valueToDistribute / 10000000 * residualInterestRate;
+            uint256 investorInterest = (_valueToDistribute / 10000000) *
+                residualInterestRate;
             amountToDistribute = _valueToDistribute - investorInterest;
-            (bool success,) = payable(investor).call{value: investorInterest}("");
+            (bool success, ) = payable(investor).call{
+                value: investorInterest
+            }("");
             if (success == false) {
                 revert TransferFailedError();
             }
             _recursiveNativeTokenDistribution(investor);
-
         } else {
             // Investor was not yet fully fulfill, we first fulfill him, and then distribute share to recipients
             if (_valueToDistribute <= investorRemainingAmount) {
+                investorReceivedAmount += _valueToDistribute;
                 // We can send whole msg.value to investor
-                (bool success,) = payable(investor).call{value: _valueToDistribute}("");
+                (bool success, ) = payable(investor).call{
+                    value: _valueToDistribute
+                }("");
                 if (success == false) {
                     revert TransferFailedError();
                 }
-                investorReceivedAmount += _valueToDistribute;
                 _recursiveNativeTokenDistribution(investor);
                 return;
             } else {
                 // msg.value is more than investor will receive, so we send him his part and redistribute the rest
-                uint256 investorInterestBonus = (_valueToDistribute - investorRemainingAmount) / 10000000 * residualInterestRate;
-                (bool success,) = payable(investor).call{value: investorRemainingAmount + investorInterestBonus}("");
+                uint256 investorInterestBonus = ((_valueToDistribute -
+                    investorRemainingAmount) / 10000000) * residualInterestRate;
+                investorReceivedAmount += investorRemainingAmount;
+                (bool success, ) = payable(investor).call{
+                    value: investorRemainingAmount + investorInterestBonus
+                }("");
                 if (success == false) {
                     revert TransferFailedError();
                 }
-                amountToDistribute = _valueToDistribute - investorRemainingAmount - investorInterestBonus;
-                investorReceivedAmount += investorRemainingAmount;
+                amountToDistribute =
+                    _valueToDistribute -
+                    investorRemainingAmount -
+                    investorInterestBonus;
                 _recursiveNativeTokenDistribution(investor);
             }
         }
 
         // Distribute to recipients
         uint256 recipientsLength = recipients.length;
-        for (uint256 i = 0; i < recipientsLength;) {
+        for (uint256 i = 0; i < recipientsLength; ) {
             address payable recipient = recipients[i];
             uint256 percentage = recipientsPercentage[recipient];
-            uint256 amountToReceive = amountToDistribute / 10000000 * percentage;
-            (bool success,) = payable(recipient).call{value: amountToReceive}("");
+            uint256 amountToReceive = (amountToDistribute / 10000000) *
+                percentage;
+            (bool success, ) = payable(recipient).call{
+                value: amountToReceive
+            }("");
             if (success == false) {
                 revert TransferFailedError();
             }
             _recursiveNativeTokenDistribution(recipient);
-            unchecked{i++;}
+            unchecked {
+                i++;
+            }
         }
     }
 
@@ -159,52 +188,71 @@ contract XLARSCPrepayment is BaseRSCPrepayment {
 
         // Platform Fee
         if (platformFee > 0) {
-            uint256 fee = contractBalance / 10000000 * platformFee;
+            uint256 fee = (contractBalance / 10000000) * platformFee;
             contractBalance -= fee;
             address payable platformWallet = factory.platformWallet();
-            erc20Token.transfer(platformWallet, fee);
+            erc20Token.safeTransfer(platformWallet, fee);
         }
 
         // Distribute to investor
-        uint256 investorRemainingAmount = investorAmountToReceive - investorReceivedAmount;
-        uint256 investorRemainingAmountToken = _convertNativeTokenToToken(_token, investorRemainingAmount);
+        uint256 investorRemainingAmount = investorAmountToReceive -
+            investorReceivedAmount;
+        uint256 investorRemainingAmountToken = _convertNativeTokenToToken(
+            _token,
+            investorRemainingAmount
+        );
 
         uint256 amountToDistribute;
 
         if (investorRemainingAmount == 0) {
             // Investor was already fulfilled and is now receiving residualInterestRate
-            uint256 investorInterest = contractBalance / 10000000 * residualInterestRate;
+            uint256 investorInterest = (contractBalance / 10000000) *
+                residualInterestRate;
             amountToDistribute = contractBalance - investorInterest;
-            erc20Token.transfer(investor, investorInterest);
+            erc20Token.safeTransfer(investor, investorInterest);
             _recursiveERC20Distribution(investor, _token);
         } else {
             // Investor was not yet fully fulfill, we first fulfill him, and then distribute share to recipients
             if (contractBalance <= investorRemainingAmountToken) {
                 // We can send whole contract erc20 balance to investor
-                erc20Token.transfer(investor, contractBalance);
-                investorReceivedAmount += _convertTokenToNativeToken(_token, contractBalance);
+                investorReceivedAmount += _convertTokenToNativeToken(
+                    _token,
+                    contractBalance
+                );
+                erc20Token.safeTransfer(investor, contractBalance);
                 emit DistributeToken(_token, contractBalance);
                 _recursiveERC20Distribution(investor, _token);
                 return;
             } else {
                 // contractBalance is more than investor will receive, so we send him his part and redistribute the rest
-                uint256 investorInterestBonus = (contractBalance - investorRemainingAmountToken) / 10000000 * residualInterestRate;
-                erc20Token.transfer(investor, investorRemainingAmountToken + investorInterestBonus);
-                _recursiveERC20Distribution(investor, _token);
-                amountToDistribute = contractBalance - investorRemainingAmountToken - investorInterestBonus;
+                uint256 investorInterestBonus = ((contractBalance -
+                    investorRemainingAmountToken) / 10000000) *
+                    residualInterestRate;
                 investorReceivedAmount += investorRemainingAmount;
+                erc20Token.safeTransfer(
+                    investor,
+                    investorRemainingAmountToken + investorInterestBonus
+                );
+                _recursiveERC20Distribution(investor, _token);
+                amountToDistribute =
+                    contractBalance -
+                    investorRemainingAmountToken -
+                    investorInterestBonus;
             }
         }
 
         // Distribute to recipients
         uint256 recipientsLength = recipients.length;
-        for (uint256 i = 0; i < recipientsLength;) {
+        for (uint256 i = 0; i < recipientsLength; ) {
             address payable recipient = recipients[i];
             uint256 percentage = recipientsPercentage[recipient];
-            uint256 amountToReceive = amountToDistribute / 10000000 * percentage;
-            erc20Token.transfer(recipient, amountToReceive);
+            uint256 amountToReceive = (amountToDistribute / 10000000) *
+                percentage;
+            erc20Token.safeTransfer(recipient, amountToReceive);
             _recursiveERC20Distribution(recipient, _token);
-            unchecked{i++;}
+            unchecked {
+                i++;
+            }
         }
         emit DistributeToken(_token, contractBalance);
     }
@@ -213,13 +261,17 @@ contract XLARSCPrepayment is BaseRSCPrepayment {
      * @notice internal function that returns erc20/nativeToken price from external oracle
      * @param _token Address of the token
      */
-    function _getTokenNativeTokenPrice(address _token) private view returns (uint256) {
+    function _getTokenNativeTokenPrice(
+        address _token
+    ) private view returns (uint256) {
         address tokenOracleAddress = tokenNativeTokenPriceFeeds[_token];
         if (tokenOracleAddress == address(0)) {
             revert TokenMissingNativeTokenPriceOracle();
         }
-        AggregatorV3Interface tokenNativeTokenPriceFeed = AggregatorV3Interface(tokenOracleAddress);
-        (,int256 price,,,) = tokenNativeTokenPriceFeed.latestRoundData();
+        AggregatorV3Interface tokenNativeTokenPriceFeed = AggregatorV3Interface(
+            tokenOracleAddress
+        );
+        (, int256 price, , , ) = tokenNativeTokenPriceFeed.latestRoundData();
         return uint256(price);
     }
 
@@ -228,7 +280,10 @@ contract XLARSCPrepayment is BaseRSCPrepayment {
      * @param _token token address
      * @param _tokenValue Token value to be converted to USD
      */
-    function _convertTokenToNativeToken(address _token, uint256 _tokenValue) internal view returns (uint256) {
+    function _convertTokenToNativeToken(
+        address _token,
+        uint256 _tokenValue
+    ) internal view returns (uint256) {
         return (_getTokenNativeTokenPrice(_token) * _tokenValue) / 1e18;
     }
 
@@ -237,8 +292,13 @@ contract XLARSCPrepayment is BaseRSCPrepayment {
      * @param _token token address
      * @param _nativeTokenValue NativeToken value to be converted
      */
-    function _convertNativeTokenToToken(address _token, uint256 _nativeTokenValue) internal view returns (uint256) {
-        return (_nativeTokenValue * 1e25 / _getTokenNativeTokenPrice(_token) * 1e25) / 1e32;
+    function _convertNativeTokenToToken(
+        address _token,
+        uint256 _nativeTokenValue
+    ) internal view returns (uint256) {
+        return
+            (((_nativeTokenValue * 1e25) / _getTokenNativeTokenPrice(_token)) *
+                1e25) / 1e32;
     }
 
     /**
@@ -246,7 +306,10 @@ contract XLARSCPrepayment is BaseRSCPrepayment {
      * @param _token address of token
      * @param _priceFeed address of native token price feed for given token
      */
-    function setTokenNativeTokenPriceFeed(address _token, address _priceFeed) external onlyOwner {
+    function setTokenNativeTokenPriceFeed(
+        address _token,
+        address _priceFeed
+    ) external onlyOwner {
         _setTokenNativeTokenPriceFeed(_token, _priceFeed);
     }
 
@@ -255,7 +318,10 @@ contract XLARSCPrepayment is BaseRSCPrepayment {
      * @param _token address of token
      * @param _priceFeed address of native Token price feed for given token
      */
-    function _setTokenNativeTokenPriceFeed(address _token, address _priceFeed) internal {
+    function _setTokenNativeTokenPriceFeed(
+        address _token,
+        address _priceFeed
+    ) internal {
         tokenNativeTokenPriceFeeds[_token] = _priceFeed;
         emit TokenPriceFeedSet(_token, _priceFeed);
     }

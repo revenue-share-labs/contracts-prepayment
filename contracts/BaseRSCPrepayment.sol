@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/IFeeFactory.sol";
 import "./interfaces/IRecursiveRSC.sol";
-
 
 abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     mapping(address => bool) public distributors;
@@ -25,7 +24,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     uint256 public investorAmountToReceive;
     uint256 public investorReceivedAmount;
 
-    address payable [] public recipients;
+    address payable[] public recipients;
     mapping(address => uint256) public recipientsPercentage;
 
     struct InitContractSetting {
@@ -41,7 +40,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         address[] erc20PriceFeeds;
     }
 
-    event SetRecipients(address payable [] recipients, uint256[] percentages);
+    event SetRecipients(address payable[] recipients, uint256[] percentages);
     event DistributeToken(address token, uint256 amount);
     event DistributorChanged(address distributor, bool isDistributor);
     event ControllerChanged(address oldController, address newController);
@@ -82,7 +81,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     /**
      * @dev Throws if sender is not distributor
      */
-    modifier onlyDistributor {
+    modifier onlyDistributor() {
         if (distributors[msg.sender] == false) {
             revert OnlyDistributorError();
         }
@@ -92,7 +91,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     /**
      * @dev Checks whether sender is controller
      */
-    modifier onlyController {
+    modifier onlyController() {
         if (msg.sender != controller) {
             revert OnlyControllerError();
         }
@@ -103,7 +102,10 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         // Check whether automatic native token distribution is enabled
         // and that contractBalance is high enough to automatic distribution
         uint256 contractBalance = address(this).balance;
-        if (autoNativeTokenDistribution && contractBalance >= minAutoDistributionAmount) {
+        if (
+            autoNativeTokenDistribution &&
+            contractBalance >= minAutoDistributionAmount
+        ) {
             _redistributeNativeToken(contractBalance);
         }
     }
@@ -112,7 +114,10 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         // Check whether automatic eth distribution is enabled
         // and that contractBalance is native token enough to automatic distribution
         uint256 contractBalance = address(this).balance;
-        if (autoNativeTokenDistribution && contractBalance >= minAutoDistributionAmount) {
+        if (
+            autoNativeTokenDistribution &&
+            contractBalance >= minAutoDistributionAmount
+        ) {
             _redistributeNativeToken(contractBalance);
         }
     }
@@ -120,7 +125,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     /**
      * @notice External function to return number of recipients
      */
-    function numberOfRecipients() external view returns(uint256) {
+    function numberOfRecipients() external view returns (uint256) {
         return recipients.length;
     }
 
@@ -128,8 +133,9 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
      * @notice Internal function to redistribute native token based on percentages assign to the recipients
      * @param _valueToDistribute native token amount to be distribute
      */
-    function _redistributeNativeToken(uint256 _valueToDistribute) internal virtual {}
-
+    function _redistributeNativeToken(
+        uint256 _valueToDistribute
+    ) internal virtual {}
 
     /**
      * @notice External function to redistribute NativeToken based on percentages assign to the recipients
@@ -142,14 +148,16 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
      * @notice Internal function to check whether percentages are equal to 100%
      * @return valid boolean indicating whether sum of percentage == 100%
      */
-    function _percentageIsValid() internal view returns (bool valid){
+    function _percentageIsValid() internal view returns (bool valid) {
         uint256 recipientsLength = recipients.length;
         uint256 percentageSum;
 
-        for (uint256 i = 0; i < recipientsLength;) {
+        for (uint256 i = 0; i < recipientsLength; ) {
             address recipient = recipients[i];
             percentageSum += recipientsPercentage[recipient];
-            unchecked {i++;}
+            unchecked {
+                i++;
+            }
         }
 
         return percentageSum == 10000000;
@@ -160,7 +168,10 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
      * @param _recipient Fixed amount of token user want to buy
      * @param _percentage code of the affiliation partner
      */
-    function _addRecipient(address payable _recipient, uint256 _percentage) internal {
+    function _addRecipient(
+        address payable _recipient,
+        uint256 _percentage
+    ) internal {
         if (_recipient == address(0)) {
             revert NullAddressRecipientError();
         }
@@ -181,10 +192,12 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
             return;
         }
 
-        for (uint256 i = 0; i < recipientsLength;) {
+        for (uint256 i = 0; i < recipientsLength; ) {
             address recipient = recipients[i];
             recipientsPercentage[recipient] = 0;
-            unchecked{i++;}
+            unchecked {
+                i++;
+            }
         }
         delete recipients;
     }
@@ -195,7 +208,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
      * @param _percentages new percentages for recipients
      */
     function _setRecipients(
-        address payable [] memory _newRecipients,
+        address payable[] memory _newRecipients,
         uint256[] memory _percentages
     ) internal {
         uint256 newRecipientsLength = _newRecipients.length;
@@ -205,9 +218,11 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
 
         _removeAll();
 
-        for (uint256 i = 0; i < newRecipientsLength;) {
+        for (uint256 i = 0; i < newRecipientsLength; ) {
             _addRecipient(_newRecipients[i], _percentages[i]);
-            unchecked{i++;}
+            unchecked {
+                i++;
+            }
         }
 
         if (_percentageIsValid() == false) {
@@ -222,7 +237,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
      * @param _percentages new percentages for recipients
      */
     function setRecipients(
-        address payable [] memory _newRecipients,
+        address payable[] memory _newRecipients,
         uint256[] memory _percentages
     ) public onlyController {
         _setRecipients(_newRecipients, _percentages);
@@ -233,7 +248,10 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
      * @param _distributor address of new distributor
      * @param _isDistributor bool indicating whether address is / isn't distributor
      */
-    function setDistributor(address _distributor, bool _isDistributor) external onlyOwner {
+    function setDistributor(
+        address _distributor,
+        bool _isDistributor
+    ) external onlyOwner {
         emit DistributorChanged(_distributor, _isDistributor);
         distributors[_distributor] = _isDistributor;
     }
@@ -258,20 +276,29 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
      * @param _recipient Address of recipient to recursively distribute
      * @param _token token to be distributed
      */
-    function _recursiveERC20Distribution(address _recipient, address _token) internal {
+    function _recursiveERC20Distribution(
+        address _recipient,
+        address _token
+    ) internal {
         // Handle Recursive token distribution
         IRecursiveRSC recursiveRecipient = IRecursiveRSC(_recipient);
 
         // Wallets have size 0 and contracts > 0. This way we can distinguish them.
         uint256 recipientSize;
-        assembly {recipientSize := extcodesize(_recipient)}
+        assembly {
+            recipientSize := extcodesize(_recipient)
+        }
         if (recipientSize > 0) {
             // Validate this contract is distributor in child recipient
-            try recursiveRecipient.distributors(address(this)) returns(bool isBranchDistributor) {
+            try recursiveRecipient.distributors(address(this)) returns (
+                bool isBranchDistributor
+            ) {
                 if (isBranchDistributor) {
                     recursiveRecipient.redistributeToken(_token);
                 }
-            } catch {return;}  // unable to recursively distribute
+            } catch {
+                return;
+            } // unable to recursively distribute
         }
     }
 
@@ -285,23 +312,32 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
 
         // Wallets have size 0 and contracts > 0. This way we can distinguish them.
         uint256 recipientSize;
-        assembly {recipientSize := extcodesize(_recipient)}
+        assembly {
+            recipientSize := extcodesize(_recipient)
+        }
         if (recipientSize > 0) {
-
             // Check whether child recipient have autoNativeTokenDistribution set to true,
             // if yes tokens will be recursively distributed automatically
-            try recursiveRecipient.autoNativeTokenDistribution() returns(bool childAutoNativeTokenDistribution) {
+            try recursiveRecipient.autoNativeTokenDistribution() returns (
+                bool childAutoNativeTokenDistribution
+            ) {
                 if (childAutoNativeTokenDistribution == true) {
                     return;
                 }
-            } catch {return;}
+            } catch {
+                return;
+            }
 
             // Validate this contract is distributor in child recipient
-            try recursiveRecipient.distributors(address(this)) returns(bool isBranchDistributor) {
+            try recursiveRecipient.distributors(address(this)) returns (
+                bool isBranchDistributor
+            ) {
                 if (isBranchDistributor) {
                     recursiveRecipient.redistributeNativeToken();
                 }
-            } catch {return;}  // unable to recursively distribute
+            } catch {
+                return;
+            } // unable to recursively distribute
         }
     }
 }

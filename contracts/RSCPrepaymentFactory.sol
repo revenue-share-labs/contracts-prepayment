@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "contracts/BaseRSCPrepayment.sol";
@@ -8,8 +8,7 @@ import "contracts/RSCPrepayment.sol";
 import "contracts/RSCPrepaymentUSD.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-
-contract XLARSCPrepaymentFactory is Ownable {
+contract RSCPrepaymentFactory is Ownable {
     address payable public immutable contractImplementation;
     address payable public immutable contractImplementationUsd;
 
@@ -30,7 +29,7 @@ contract XLARSCPrepaymentFactory is Ownable {
         uint256 investedAmount;
         uint256 interestRate;
         uint256 residualInterestRate;
-        address payable [] initialRecipients;
+        address payable[] initialRecipients;
         uint256[] percentages;
         address[] supportedErc20addresses;
         address[] erc20PriceFeeds;
@@ -48,7 +47,7 @@ contract XLARSCPrepaymentFactory is Ownable {
         uint256 interestRate;
         uint256 residualInterestRate;
         address nativeTokenUsdPriceFeed;
-        address payable [] initialRecipients;
+        address payable[] initialRecipients;
         uint256[] percentages;
         address[] supportedErc20addresses;
         address[] erc20PriceFeeds;
@@ -84,10 +83,7 @@ contract XLARSCPrepaymentFactory is Ownable {
         bytes32 creationId
     );
 
-    event PlatformFeeChanged(
-        uint256 oldFee,
-        uint256 newFee
-    );
+    event PlatformFeeChanged(uint256 oldFee, uint256 newFee);
 
     event PlatformWalletChanged(
         address payable oldPlatformWallet,
@@ -101,8 +97,8 @@ contract XLARSCPrepaymentFactory is Ownable {
     error CreationIdAlreadyProcessed();
 
     constructor() {
-        contractImplementation = payable(new XLARSCPrepayment());
-        contractImplementationUsd = payable(new XLARSCPrepaymentUsd());
+        contractImplementation = payable(new RSCPrepayment());
+        contractImplementationUsd = payable(new RSCPrepaymentUsd());
     }
 
     /**
@@ -110,8 +106,9 @@ contract XLARSCPrepaymentFactory is Ownable {
      * @param _data Initial data for creating new RSC Prepayment native token contract
      * @return Address of new contract
      */
-    function createRSCPrepayment(RSCCreateData memory _data) external returns(address) {
-
+    function createRSCPrepayment(
+        RSCCreateData memory _data
+    ) external returns (address) {
         // check and register creationId
         bytes32 creationId = _data.creationId;
         if (creationId != bytes32(0)) {
@@ -125,20 +122,21 @@ contract XLARSCPrepaymentFactory is Ownable {
 
         address payable clone = payable(Clones.clone(contractImplementation));
 
-        BaseRSCPrepayment.InitContractSetting memory contractSettings = BaseRSCPrepayment.InitContractSetting(
-            msg.sender,
-            _data.distributors,
-            _data.controller,
-            _data.immutableController,
-            _data.autoNativeTokenDistribution,
-            _data.minAutoDistributeAmount,
-            platformFee,
-            address(this),
-            _data.supportedErc20addresses,
-            _data.erc20PriceFeeds
-        );
+        BaseRSCPrepayment.InitContractSetting
+            memory contractSettings = BaseRSCPrepayment.InitContractSetting(
+                msg.sender,
+                _data.distributors,
+                _data.controller,
+                _data.immutableController,
+                _data.autoNativeTokenDistribution,
+                _data.minAutoDistributeAmount,
+                platformFee,
+                address(this),
+                _data.supportedErc20addresses,
+                _data.erc20PriceFeeds
+            );
 
-        XLARSCPrepayment(clone).initialize(
+        RSCPrepayment(clone).initialize(
             contractSettings,
             _data.investor,
             _data.investedAmount,
@@ -170,8 +168,9 @@ contract XLARSCPrepaymentFactory is Ownable {
      * @param _data Initial data for creating new RSC Prepayment USD contract
      * @return Address of new contract
      */
-    function createRSCPrepaymentUsd(RSCCreateUsdData memory _data) external returns(address) {
-
+    function createRSCPrepaymentUsd(
+        RSCCreateUsdData memory _data
+    ) external returns (address) {
         // check and register creationId
         bytes32 creationId = _data.creationId;
         if (creationId != bytes32(0)) {
@@ -183,22 +182,25 @@ contract XLARSCPrepaymentFactory is Ownable {
             }
         }
 
-        address payable clone = payable(Clones.clone(contractImplementationUsd));
-
-        BaseRSCPrepayment.InitContractSetting memory contractSettings = BaseRSCPrepayment.InitContractSetting(
-            msg.sender,
-            _data.distributors,
-            _data.controller,
-            _data.immutableController,
-            _data.autoNativeTokenDistribution,
-            _data.minAutoDistributeAmount,
-            platformFee,
-            address(this),
-            _data.supportedErc20addresses,
-            _data.erc20PriceFeeds
+        address payable clone = payable(
+            Clones.clone(contractImplementationUsd)
         );
 
-        XLARSCPrepaymentUsd(clone).initialize(
+        BaseRSCPrepayment.InitContractSetting
+            memory contractSettings = BaseRSCPrepayment.InitContractSetting(
+                msg.sender,
+                _data.distributors,
+                _data.controller,
+                _data.immutableController,
+                _data.autoNativeTokenDistribution,
+                _data.minAutoDistributeAmount,
+                platformFee,
+                address(this),
+                _data.supportedErc20addresses,
+                _data.erc20PriceFeeds
+            );
+
+        RSCPrepaymentUsd(clone).initialize(
             contractSettings,
             _data.investor,
             _data.investedAmount,
@@ -243,7 +245,9 @@ contract XLARSCPrepaymentFactory is Ownable {
      * @dev Only Owner function for setting platform fee
      * @param _platformWallet New native token wallet which will receive fees
      */
-    function setPlatformWallet(address payable _platformWallet) external onlyOwner {
+    function setPlatformWallet(
+        address payable _platformWallet
+    ) external onlyOwner {
         emit PlatformWalletChanged(platformWallet, _platformWallet);
         platformWallet = _platformWallet;
     }
