@@ -8,6 +8,9 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./BaseRSCPrepayment.sol";
 
+// Throws when trying to fetch USD price for token without oracle
+error TokenMissingUsdPriceOracle();
+
 contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
     using SafeERC20 for IERC20;
 
@@ -19,9 +22,6 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
         address oldNativeTokenPriceFeed,
         address newNativeTokenPriceFeed
     );
-
-    // Throws when trying to fetch USD price for token without oracle
-    error TokenMissingUsdPriceOracle();
 
     /**
      * @dev Constructor function, can be called only once

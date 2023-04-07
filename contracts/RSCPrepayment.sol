@@ -8,14 +8,14 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./BaseRSCPrepayment.sol";
 
+// Throws when trying to fetch native token price for token without oracle
+error TokenMissingNativeTokenPriceOracle();
+
 contract RSCPrepayment is BaseRSCPrepayment {
     using SafeERC20 for IERC20;
 
     mapping(address => address) tokenNativeTokenPriceFeeds;
     event TokenPriceFeedSet(address token, address priceFeed);
-
-    // Throws when trying to fetch native token price for token without oracle
-    error TokenMissingNativeTokenPriceOracle();
 
     /**
      * @dev Constructor function, can be called only once
