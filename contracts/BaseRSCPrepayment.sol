@@ -29,9 +29,6 @@ error InconsistentDataLengthError();
 error InvalidPercentageError();
 
 // Throw when distributor address is same as submit one
-error DistributorAlreadyConfiguredError();
-
-// Throw when distributor address is same as submit one
 error ControllerAlreadyConfiguredError();
 
 // Throw when change is triggered for immutable controller
@@ -102,10 +99,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         // Check whether automatic native token distribution is enabled
         // and that contractBalance is high enough to automatic distribution
         uint256 contractBalance = address(this).balance;
-        if (
-            autoNativeTokenDistribution &&
-            contractBalance >= minAutoDistributionAmount
-        ) {
+        if (autoNativeTokenDistribution && contractBalance >= minAutoDistributionAmount) {
             _redistributeNativeToken(contractBalance);
         }
     }
@@ -114,10 +108,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         // Check whether automatic eth distribution is enabled
         // and that contractBalance is native token enough to automatic distribution
         uint256 contractBalance = address(this).balance;
-        if (
-            autoNativeTokenDistribution &&
-            contractBalance >= minAutoDistributionAmount
-        ) {
+        if (autoNativeTokenDistribution && contractBalance >= minAutoDistributionAmount) {
             _redistributeNativeToken(contractBalance);
         }
     }
@@ -133,9 +124,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
      * @notice Internal function to redistribute native token based on percentages assign to the recipients
      * @param _valueToDistribute native token amount to be distribute
      */
-    function _redistributeNativeToken(
-        uint256 _valueToDistribute
-    ) internal virtual {}
+    function _redistributeNativeToken(uint256 _valueToDistribute) internal virtual {}
 
     /**
      * @notice External function to redistribute NativeToken based on percentages assign to the recipients
@@ -168,10 +157,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
      * @param _recipient Fixed amount of token user want to buy
      * @param _percentage code of the affiliation partner
      */
-    function _addRecipient(
-        address payable _recipient,
-        uint256 _percentage
-    ) internal {
+    function _addRecipient(address payable _recipient, uint256 _percentage) internal {
         if (_recipient == address(0)) {
             revert NullAddressRecipientError();
         }
@@ -276,10 +262,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
      * @param _recipient Address of recipient to recursively distribute
      * @param _token token to be distributed
      */
-    function _recursiveERC20Distribution(
-        address _recipient,
-        address _token
-    ) internal {
+    function _recursiveERC20Distribution(address _recipient, address _token) internal {
         // Handle Recursive token distribution
         IRecursiveRSC recursiveRecipient = IRecursiveRSC(_recipient);
 

@@ -78,8 +78,6 @@ describe(" RSC Prepayment tests", function () {
 
     TestToken = await ethers.getContractFactory("TestToken");
     testToken = await TestToken.deploy("TestToken", "TTT", 100000000);
-    await testToken.deployed();
-
     rscPrepaymentContract = await deployRSCPrepayment(
       owner.address,
       [owner.address],

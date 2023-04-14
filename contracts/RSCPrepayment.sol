@@ -93,9 +93,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
      * @notice Internal function to redistribute native token based on percentages assign to the recipients
      * @param _valueToDistribute native token amount to be distribute
      */
-    function _redistributeNativeToken(
-        uint256 _valueToDistribute
-    ) internal override {
+    function _redistributeNativeToken(uint256 _valueToDistribute) internal override {
         // Platform Fee
         if (platformFee > 0) {
             uint256 fee = (_valueToDistribute / 10000000) * platformFee;
@@ -116,9 +114,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
             uint256 investorInterest = (_valueToDistribute / 10000000) *
                 residualInterestRate;
             amountToDistribute = _valueToDistribute - investorInterest;
-            (bool success, ) = payable(investor).call{
-                value: investorInterest
-            }("");
+            (bool success, ) = payable(investor).call{ value: investorInterest }("");
             if (success == false) {
                 revert TransferFailedError();
             }
@@ -128,9 +124,9 @@ contract RSCPrepayment is BaseRSCPrepayment {
             if (_valueToDistribute <= investorRemainingAmount) {
                 investorReceivedAmount += _valueToDistribute;
                 // We can send whole msg.value to investor
-                (bool success, ) = payable(investor).call{
-                    value: _valueToDistribute
-                }("");
+                (bool success, ) = payable(investor).call{ value: _valueToDistribute }(
+                    ""
+                );
                 if (success == false) {
                     revert TransferFailedError();
                 }
@@ -160,11 +156,8 @@ contract RSCPrepayment is BaseRSCPrepayment {
         for (uint256 i = 0; i < recipientsLength; ) {
             address payable recipient = recipients[i];
             uint256 percentage = recipientsPercentage[recipient];
-            uint256 amountToReceive = (amountToDistribute / 10000000) *
-                percentage;
-            (bool success, ) = payable(recipient).call{
-                value: amountToReceive
-            }("");
+            uint256 amountToReceive = (amountToDistribute / 10000000) * percentage;
+            (bool success, ) = payable(recipient).call{ value: amountToReceive }("");
             if (success == false) {
                 revert TransferFailedError();
             }
@@ -226,8 +219,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
             } else {
                 // contractBalance is more than investor will receive, so we send him his part and redistribute the rest
                 uint256 investorInterestBonus = ((contractBalance -
-                    investorRemainingAmountToken) / 10000000) *
-                    residualInterestRate;
+                    investorRemainingAmountToken) / 10000000) * residualInterestRate;
                 investorReceivedAmount += investorRemainingAmount;
                 erc20Token.safeTransfer(
                     investor,
@@ -246,8 +238,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
         for (uint256 i = 0; i < recipientsLength; ) {
             address payable recipient = recipients[i];
             uint256 percentage = recipientsPercentage[recipient];
-            uint256 amountToReceive = (amountToDistribute / 10000000) *
-                percentage;
+            uint256 amountToReceive = (amountToDistribute / 10000000) * percentage;
             erc20Token.safeTransfer(recipient, amountToReceive);
             _recursiveERC20Distribution(recipient, _token);
             unchecked {
@@ -261,9 +252,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
      * @notice internal function that returns erc20/nativeToken price from external oracle
      * @param _token Address of the token
      */
-    function _getTokenNativeTokenPrice(
-        address _token
-    ) private view returns (uint256) {
+    function _getTokenNativeTokenPrice(address _token) private view returns (uint256) {
         address tokenOracleAddress = tokenNativeTokenPriceFeeds[_token];
         if (tokenOracleAddress == address(0)) {
             revert TokenMissingNativeTokenPriceOracle();
@@ -297,8 +286,8 @@ contract RSCPrepayment is BaseRSCPrepayment {
         uint256 _nativeTokenValue
     ) internal view returns (uint256) {
         return
-            (((_nativeTokenValue * 1e25) / _getTokenNativeTokenPrice(_token)) *
-                1e25) / 1e32;
+            (((_nativeTokenValue * 1e25) / _getTokenNativeTokenPrice(_token)) * 1e25) /
+            1e32;
     }
 
     /**
@@ -318,10 +307,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
      * @param _token address of token
      * @param _priceFeed address of native Token price feed for given token
      */
-    function _setTokenNativeTokenPriceFeed(
-        address _token,
-        address _priceFeed
-    ) internal {
+    function _setTokenNativeTokenPriceFeed(address _token, address _priceFeed) internal {
         tokenNativeTokenPriceFeeds[_token] = _priceFeed;
         emit TokenPriceFeedSet(_token, _priceFeed);
     }

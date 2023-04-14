@@ -106,9 +106,7 @@ contract RSCPrepaymentFactory is Ownable {
      * @param _data Initial data for creating new RSC Prepayment native token contract
      * @return Address of new contract
      */
-    function createRSCPrepayment(
-        RSCCreateData memory _data
-    ) external returns (address) {
+    function createRSCPrepayment(RSCCreateData memory _data) external returns (address) {
         // check and register creationId
         bytes32 creationId = _data.creationId;
         if (creationId != bytes32(0)) {
@@ -122,8 +120,8 @@ contract RSCPrepaymentFactory is Ownable {
 
         address payable clone = payable(Clones.clone(contractImplementation));
 
-        BaseRSCPrepayment.InitContractSetting
-            memory contractSettings = BaseRSCPrepayment.InitContractSetting(
+        BaseRSCPrepayment.InitContractSetting memory contractSettings = BaseRSCPrepayment
+            .InitContractSetting(
                 msg.sender,
                 _data.distributors,
                 _data.controller,
@@ -182,12 +180,10 @@ contract RSCPrepaymentFactory is Ownable {
             }
         }
 
-        address payable clone = payable(
-            Clones.clone(contractImplementationUsd)
-        );
+        address payable clone = payable(Clones.clone(contractImplementationUsd));
 
-        BaseRSCPrepayment.InitContractSetting
-            memory contractSettings = BaseRSCPrepayment.InitContractSetting(
+        BaseRSCPrepayment.InitContractSetting memory contractSettings = BaseRSCPrepayment
+            .InitContractSetting(
                 msg.sender,
                 _data.distributors,
                 _data.controller,
@@ -245,9 +241,7 @@ contract RSCPrepaymentFactory is Ownable {
      * @dev Only Owner function for setting platform fee
      * @param _platformWallet New native token wallet which will receive fees
      */
-    function setPlatformWallet(
-        address payable _platformWallet
-    ) external onlyOwner {
+    function setPlatformWallet(address payable _platformWallet) external onlyOwner {
         emit PlatformWalletChanged(platformWallet, _platformWallet);
         platformWallet = _platformWallet;
     }
