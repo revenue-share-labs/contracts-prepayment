@@ -60,9 +60,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
         minAutoDistributionAmount = _settings.minAutoDistributionAmount;
         factory = IFeeFactory(_settings.factoryAddress);
         platformFee = _settings.platformFee;
-        nativeTokenUsdPriceFeed = AggregatorV3Interface(
-            _nativeTokenUsdPriceFeed
-        );
+        nativeTokenUsdPriceFeed = AggregatorV3Interface(_nativeTokenUsdPriceFeed);
         _transferOwnership(_settings.owner);
         uint256 supportedErc20Length = _settings.supportedErc20addresses.length;
         if (supportedErc20Length != _settings.erc20PriceFeeds.length) {
@@ -99,9 +97,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
      * @notice Internal function to redistribute native token based on percentages assign to the recipients
      * @param _valueToDistribute native token amount to be distribute
      */
-    function _redistributeNativeToken(
-        uint256 _valueToDistribute
-    ) internal override {
+    function _redistributeNativeToken(uint256 _valueToDistribute) internal override {
         // Platform Fee
         if (platformFee > 0) {
             uint256 fee = (_valueToDistribute / 10000000) * platformFee;
@@ -126,9 +122,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
             uint256 investorInterest = (_valueToDistribute / 10000000) *
                 residualInterestRate;
             amountToDistribute = _valueToDistribute - investorInterest;
-            (bool success, ) = payable(investor).call{
-                value: investorInterest
-            }("");
+            (bool success, ) = payable(investor).call{ value: investorInterest }("");
             if (success == false) {
                 revert TransferFailedError();
             }
@@ -136,13 +130,11 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
         } else {
             // Investor was not yet fully fulfill, we first fulfill him, and then distribute share to recipients
             if (_valueToDistribute <= investorRemainingAmountNativeToken) {
-                investorReceivedAmount += _convertNativeTokenToUsd(
-                    _valueToDistribute
-                );
+                investorReceivedAmount += _convertNativeTokenToUsd(_valueToDistribute);
                 // We can send whole _valueToDistribute to investor
-                (bool success, ) = payable(investor).call{
-                    value: _valueToDistribute
-                }("");
+                (bool success, ) = payable(investor).call{ value: _valueToDistribute }(
+                    ""
+                );
                 if (success == false) {
                     revert TransferFailedError();
                 }
@@ -156,8 +148,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
 
                 investorReceivedAmount += investorRemainingAmount;
                 (bool success, ) = payable(investor).call{
-                    value: investorRemainingAmountNativeToken +
-                        investorInterestBonus
+                    value: investorRemainingAmountNativeToken + investorInterestBonus
                 }("");
                 if (success == false) {
                     revert TransferFailedError();
@@ -174,11 +165,8 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
         for (uint256 i = 0; i < recipientsLength; ) {
             address payable recipient = recipients[i];
             uint256 percentage = recipientsPercentage[recipient];
-            uint256 amountToReceive = (amountToDistribute / 10000000) *
-                percentage;
-            (bool success, ) = payable(recipient).call{
-                value: amountToReceive
-            }("");
+            uint256 amountToReceive = (amountToDistribute / 10000000) * percentage;
+            (bool success, ) = payable(recipient).call{ value: amountToReceive }("");
             if (success == false) {
                 revert TransferFailedError();
             }
@@ -203,9 +191,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
      * @notice Internal function to convert USD value to native token value
      * @param _usdValue Usd value to be converted
      */
-    function _convertUsdToNativeToken(
-        uint256 _usdValue
-    ) internal view returns (uint256) {
+    function _convertUsdToNativeToken(uint256 _usdValue) internal view returns (uint256) {
         return (((_usdValue * 1e25) / _getNativeTokenUsdPrice()) * 1e25) / 1e32;
     }
 
@@ -296,10 +282,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
         } else {
             // Investor was not yet fully fulfill, we first fulfill him, and then distribute share to recipients
             if (contractBalance <= investorRemainingAmountToken) {
-                investorReceivedAmount += _convertTokenToUsd(
-                    _token,
-                    contractBalance
-                );
+                investorReceivedAmount += _convertTokenToUsd(_token, contractBalance);
                 // We can send whole contract erc20 balance to investor
                 erc20Token.safeTransfer(investor, contractBalance);
                 emit DistributeToken(_token, contractBalance);
@@ -308,8 +291,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
             } else {
                 // contractBalance is more than investor will receive, so we send him his part and redistribute the rest
                 uint256 investorInterestBonus = ((contractBalance -
-                    investorRemainingAmountToken) / 10000000) *
-                    residualInterestRate;
+                    investorRemainingAmountToken) / 10000000) * residualInterestRate;
                 investorReceivedAmount += investorRemainingAmount;
                 erc20Token.safeTransfer(
                     investor,
@@ -328,8 +310,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
         for (uint256 i = 0; i < recipientsLength; ) {
             address payable recipient = recipients[i];
             uint256 percentage = recipientsPercentage[recipient];
-            uint256 amountToReceive = (amountToDistribute / 10000000) *
-                percentage;
+            uint256 amountToReceive = (amountToDistribute / 10000000) * percentage;
             erc20Token.safeTransfer(recipient, amountToReceive);
             _recursiveERC20Distribution(recipient, _token);
             unchecked {
@@ -344,10 +325,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
      * @param _token address of token
      * @param _priceFeed address of USD price feed for given token
      */
-    function setTokenUsdPriceFeed(
-        address _token,
-        address _priceFeed
-    ) external onlyOwner {
+    function setTokenUsdPriceFeed(address _token, address _priceFeed) external onlyOwner {
         _setTokenUsdPriceFeed(_token, _priceFeed);
     }
 
@@ -356,10 +334,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
      * @param _token address of token
      * @param _priceFeed address of USD price feed for given token
      */
-    function _setTokenUsdPriceFeed(
-        address _token,
-        address _priceFeed
-    ) internal {
+    function _setTokenUsdPriceFeed(address _token, address _priceFeed) internal {
         tokenUsdPriceFeeds[_token] = _priceFeed;
         emit TokenPriceFeedSet(_token, _priceFeed);
     }
@@ -369,10 +344,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
      * @param _priceFeed address of USD price feed for native token
      */
     function setNativeTokenPriceFeed(address _priceFeed) external onlyOwner {
-        emit NativeTokenPriceFeedSet(
-            address(nativeTokenUsdPriceFeed),
-            _priceFeed
-        );
+        emit NativeTokenPriceFeedSet(address(nativeTokenUsdPriceFeed), _priceFeed);
         nativeTokenUsdPriceFeed = AggregatorV3Interface(_priceFeed);
     }
 }
