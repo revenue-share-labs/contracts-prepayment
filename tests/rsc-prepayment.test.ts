@@ -11,66 +11,16 @@ import {
   TestToken__factory,
   MockReceiver,
   MockReceiver__factory,
+  EthPriceFeedMock__factory,
+  EthPriceFeedMock,
 } from "../typechain-types";
 import { snapshot } from "./utils";
 
-async function deployRSCPrepayment(
-  controller: any,
-  distributors: any,
-  immutableController: any,
-  autoNativeTokenDistribution: any,
-  minAutoDistributeAmount: any,
-  investor: any,
-  investedAmount: any,
-  interestRate: any,
-  residualInterestRate: any,
-  initialRecipients: any,
-  percentages: any,
-  supportedErc20addresses: any,
-  creationId: any
-) {
-  const RSCPrepaymentFactory = await ethers.getContractFactory(
-    "RSCPrepaymentFactory"
-  );
-  const rscPrepaymentFactory = await RSCPrepaymentFactory.deploy();
-  await rscPrepaymentFactory.deployed();
-
-  const EthPriceFeedMock = await ethers.getContractFactory("EthPriceFeedMock");
-  const ethPriceFeedMock = await EthPriceFeedMock.deploy();
-  await ethPriceFeedMock.deployed();
-
-  const tx = await rscPrepaymentFactory.createRSCPrepayment({
-    controller: controller,
-    distributors: distributors,
-    immutableController: immutableController,
-    autoNativeTokenDistribution: autoNativeTokenDistribution,
-    minAutoDistributeAmount: minAutoDistributeAmount,
-    investor: investor,
-    investedAmount: investedAmount,
-    interestRate: interestRate,
-    residualInterestRate: residualInterestRate,
-    initialRecipients: initialRecipients,
-    percentages: percentages,
-    supportedErc20addresses: supportedErc20addresses,
-    erc20PriceFeeds: [ethPriceFeedMock.address],
-    creationId: creationId,
-  });
-
-  let receipt = await tx.wait();
-  const rscPrepaymentContractAddress = receipt.events?.[4].args?.[0];
-
-  const RSCPrepaymentContract = await ethers.getContractFactory(
-    "RSCPrepayment"
-  );
-  const rscPrepaymentContract = await RSCPrepaymentContract.attach(
-    rscPrepaymentContractAddress
-  );
-  return rscPrepaymentContract;
-}
-
 describe(" RSC Prepayment tests", function () {
   let rscPrepaymentContract: RSCPrepayment,
+    rscPrepaymentFactory: RSCPrepaymentFactory,
     testToken: TestToken,
+    ethPriceFeedMock: EthPriceFeedMock,
     mockReceiver: MockReceiver,
     owner: SignerWithAddress,
     alice: SignerWithAddress,
@@ -81,6 +31,50 @@ describe(" RSC Prepayment tests", function () {
     addrs: SignerWithAddress[],
     snapId: string;
 
+  async function deployRSCPrepayment(
+    controller: any,
+    distributors: any,
+    immutableController: any,
+    autoNativeTokenDistribution: any,
+    minAutoDistributeAmount: any,
+    investor: any,
+    investedAmount: any,
+    interestRate: any,
+    residualInterestRate: any,
+    initialRecipients: any,
+    percentages: any,
+    supportedErc20addresses: any,
+    creationId: any
+  ) {
+    const tx = await rscPrepaymentFactory.createRSCPrepayment({
+      controller: controller,
+      distributors: distributors,
+      immutableController: immutableController,
+      autoNativeTokenDistribution: autoNativeTokenDistribution,
+      minAutoDistributeAmount: minAutoDistributeAmount,
+      investor: investor,
+      investedAmount: investedAmount,
+      interestRate: interestRate,
+      residualInterestRate: residualInterestRate,
+      initialRecipients: initialRecipients,
+      percentages: percentages,
+      supportedErc20addresses: supportedErc20addresses,
+      erc20PriceFeeds: [ethPriceFeedMock.address],
+      creationId: creationId,
+    });
+
+    let receipt = await tx.wait();
+    const rscPrepaymentContractAddress = receipt.events?.[4].args?.[0];
+
+    const RSCPrepaymentContract = await ethers.getContractFactory(
+      "RSCPrepayment"
+    );
+    const rscPrepaymentContract = await RSCPrepaymentContract.attach(
+      rscPrepaymentContractAddress
+    );
+    return rscPrepaymentContract;
+  }
+
   before(async () => {
     [owner, alice, bob, addr3, addr4, investor, ...addrs] =
       await ethers.getSigners();
@@ -89,6 +83,10 @@ describe(" RSC Prepayment tests", function () {
       "TTT",
       100000000
     );
+    ethPriceFeedMock = await new EthPriceFeedMock__factory(owner).deploy();
+    rscPrepaymentFactory = await new RSCPrepaymentFactory__factory(
+      owner
+    ).deploy();
     rscPrepaymentContract = await deployRSCPrepayment(
       owner.address,
       [owner.address],
@@ -226,6 +224,84 @@ describe(" RSC Prepayment tests", function () {
     );
   });
 
+  it("NullAddressRecipientError()", async () => {
+    await expect(
+      rscPrepaymentContract.setRecipients(
+        [alice.address, ethers.constants.AddressZero],
+        [5000000, 5000000]
+      )
+    ).to.be.revertedWithCustomError(
+      rscPrepaymentContract,
+      "NullAddressRecipientError"
+    );
+  });
+
+  it("RecipientAlreadyAddedError()", async () => {
+    await expect(
+      rscPrepaymentContract.setRecipients(
+        [alice.address, alice.address],
+        [5000000, 5000000]
+      )
+    ).to.be.revertedWithCustomError(
+      rscPrepaymentContract,
+      "RecipientAlreadyAddedError"
+    );
+  });
+
+  it("ControllerAlreadyConfiguredError()", async () => {
+    await rscPrepaymentContract.setController(alice.address);
+    await expect(
+      rscPrepaymentContract.setController(alice.address)
+    ).to.be.revertedWithCustomError(
+      rscPrepaymentContract,
+      "ControllerAlreadyConfiguredError"
+    );
+  });
+
+  it("InconsistentDataLengthError()", async () => {
+    await expect(
+      rscPrepaymentFactory.createRSCPrepayment({
+        controller: bob.address,
+        distributors: [bob.address],
+        immutableController: true,
+        autoNativeTokenDistribution: false,
+        minAutoDistributeAmount: ethers.utils.parseEther("1"),
+        investor: alice.address,
+        investedAmount: ethers.utils.parseEther("100"),
+        interestRate: BigInt(10),
+        residualInterestRate: BigInt(5),
+        initialRecipients: [alice.address],
+        percentages: [10000000],
+        supportedErc20addresses: [testToken.address, testToken.address],
+        erc20PriceFeeds: [ethPriceFeedMock.address],
+        creationId: ethers.constants.HashZero,
+      })
+    ).to.be.revertedWithCustomError(
+      rscPrepaymentContract,
+      "InconsistentDataLengthError"
+    );
+
+    await expect(
+      rscPrepaymentContract.setRecipients(
+        [alice.address, addr3.address],
+        [2000000, 5000000, 3000000]
+      )
+    ).to.be.revertedWithCustomError(
+      rscPrepaymentContract,
+      "InconsistentDataLengthError"
+    );
+
+    await expect(
+      rscPrepaymentContract.setRecipients(
+        [alice.address, addr3.address, addr4.address],
+        [2000000, 5000000]
+      )
+    ).to.be.revertedWithCustomError(
+      rscPrepaymentContract,
+      "InconsistentDataLengthError"
+    );
+  });
+
   it("Should redistribute eth correctly", async () => {
     await rscPrepaymentContract.setRecipients(
       [alice.address, bob.address],
@@ -334,6 +410,45 @@ describe(" RSC Prepayment tests", function () {
     );
     expect(investorBalanceAfter4).to.be.equal(
       investorBalanceAfter3 + ethers.utils.parseEther("2.5").toBigInt()
+    );
+  });
+
+  it("Should redistribute ETH correctly via fallback", async () => {
+    await rscPrepaymentContract.setRecipients(
+      [alice.address, bob.address],
+      [8000000, 2000000]
+    );
+
+    const aliceBalanceBefore = (
+      await ethers.provider.getBalance(alice.address)
+    ).toBigInt();
+    const bobBalanceBefore = (
+      await ethers.provider.getBalance(bob.address)
+    ).toBigInt();
+    const investorBalanceBefore = (
+      await ethers.provider.getBalance(investor.address)
+    ).toBigInt();
+
+    await owner.sendTransaction({
+      to: rscPrepaymentContract.address,
+      data: "0x1234",
+      value: ethers.utils.parseEther("50"),
+    });
+
+    const aliceBalanceAfter = (
+      await ethers.provider.getBalance(alice.address)
+    ).toBigInt();
+    const bobBalanceAfter = (
+      await ethers.provider.getBalance(bob.address)
+    ).toBigInt();
+    const investorBalanceAfter = (
+      await ethers.provider.getBalance(investor.address)
+    ).toBigInt();
+
+    expect(aliceBalanceAfter).to.be.equal(aliceBalanceBefore);
+    expect(bobBalanceAfter).to.be.equal(bobBalanceBefore);
+    expect(investorBalanceAfter).to.be.equal(
+      investorBalanceBefore + ethers.utils.parseEther("50").toBigInt()
     );
   });
 
@@ -791,7 +906,7 @@ describe(" RSC Prepayment tests", function () {
       ethers.constants.AddressZero,
       [owner.address],
       false,
-      false,
+      true,
       ethers.utils.parseEther("1"),
       investor.address,
       ethers.utils.parseEther("10"),

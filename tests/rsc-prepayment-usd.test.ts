@@ -14,60 +14,6 @@ import {
 } from "../typechain-types";
 import { snapshot } from "./utils";
 
-async function deployRSCPrepaymentUsd(
-  controller: any,
-  distributors: any,
-  immutableController: any,
-  autoNativeTokenDistribution: any,
-  minAutoDistributeAmount: any,
-  investor: any,
-  investedAmount: any,
-  interestRate: any,
-  residualInterestRate: any,
-  initialRecipients: any,
-  percentages: any,
-  supportedErc20addresses: any,
-  creationId: any
-) {
-  const RSCPrepaymentUsdFactory = await ethers.getContractFactory(
-    "RSCPrepaymentFactory"
-  );
-  const rscPrepaymentUsdFactory = await RSCPrepaymentUsdFactory.deploy();
-  await rscPrepaymentUsdFactory.deployed();
-
-  const UsdPriceFeedMock = await ethers.getContractFactory("UsdPriceFeedMock");
-  const usdPriceFeedMock = await UsdPriceFeedMock.deploy();
-  await usdPriceFeedMock.deployed();
-
-  const tx = await rscPrepaymentUsdFactory.createRSCPrepaymentUsd({
-    controller: controller,
-    distributors: distributors,
-    immutableController: immutableController,
-    autoNativeTokenDistribution: autoNativeTokenDistribution,
-    minAutoDistributeAmount: minAutoDistributeAmount,
-    investor: investor,
-    investedAmount: investedAmount,
-    interestRate: interestRate,
-    residualInterestRate: residualInterestRate,
-    nativeTokenUsdPriceFeed: usdPriceFeedMock.address,
-    initialRecipients: initialRecipients,
-    percentages: percentages,
-    supportedErc20addresses: supportedErc20addresses,
-    erc20PriceFeeds: [usdPriceFeedMock.address],
-    creationId: creationId,
-  });
-  let receipt = await tx.wait();
-  const rscPrepaymentUsdContractAddress = receipt.events?.[4].args?.[0];
-
-  const RSCPrepaymentUsdContract = await ethers.getContractFactory(
-    "RSCPrepaymentUsd"
-  );
-  const rscPrepaymentUsdContract = await RSCPrepaymentUsdContract.attach(
-    rscPrepaymentUsdContractAddress
-  );
-  return rscPrepaymentUsdContract;
-}
-
 describe("RSC Prepayment USD tests", function () {
   let rscPrepaymentUsdContract: RSCPrepaymentUsd,
     testToken: TestToken,
@@ -81,7 +27,61 @@ describe("RSC Prepayment USD tests", function () {
     addrs: SignerWithAddress[],
     snapId: string;
 
-  beforeEach(async () => {
+  async function deployRSCPrepaymentUsd(
+    controller: any,
+    distributors: any,
+    immutableController: any,
+    autoNativeTokenDistribution: any,
+    minAutoDistributeAmount: any,
+    investor: any,
+    investedAmount: any,
+    interestRate: any,
+    residualInterestRate: any,
+    initialRecipients: any,
+    percentages: any,
+    supportedErc20addresses: any,
+    creationId: any
+  ) {
+    const RSCPrepaymentUsdFactory = await ethers.getContractFactory(
+      "RSCPrepaymentFactory"
+    );
+    const rscPrepaymentUsdFactory = await RSCPrepaymentUsdFactory.deploy();
+
+    const UsdPriceFeedMock = await ethers.getContractFactory(
+      "UsdPriceFeedMock"
+    );
+    const usdPriceFeedMock = await UsdPriceFeedMock.deploy();
+
+    const tx = await rscPrepaymentUsdFactory.createRSCPrepaymentUsd({
+      controller: controller,
+      distributors: distributors,
+      immutableController: immutableController,
+      autoNativeTokenDistribution: autoNativeTokenDistribution,
+      minAutoDistributeAmount: minAutoDistributeAmount,
+      investor: investor,
+      investedAmount: investedAmount,
+      interestRate: interestRate,
+      residualInterestRate: residualInterestRate,
+      nativeTokenUsdPriceFeed: usdPriceFeedMock.address,
+      initialRecipients: initialRecipients,
+      percentages: percentages,
+      supportedErc20addresses: supportedErc20addresses,
+      erc20PriceFeeds: [usdPriceFeedMock.address],
+      creationId: creationId,
+    });
+    let receipt = await tx.wait();
+    const rscPrepaymentUsdContractAddress = receipt.events?.[4].args?.[0];
+
+    const RSCPrepaymentUsdContract = await ethers.getContractFactory(
+      "RSCPrepaymentUsd"
+    );
+    const rscPrepaymentUsdContract = await RSCPrepaymentUsdContract.attach(
+      rscPrepaymentUsdContractAddress
+    );
+    return rscPrepaymentUsdContract;
+  }
+
+  before(async () => {
     [owner, alice, bob, addr3, addr4, investor, ...addrs] =
       await ethers.getSigners();
     testToken = await new TestToken__factory(owner).deploy(
@@ -104,6 +104,14 @@ describe("RSC Prepayment USD tests", function () {
       [testToken.address],
       ethers.constants.HashZero
     );
+  });
+
+  beforeEach(async () => {
+    snapId = await snapshot.take();
+  });
+
+  afterEach(async () => {
+    await snapshot.restore(snapId);
   });
 
   it("Should set base attrs correctly", async () => {
