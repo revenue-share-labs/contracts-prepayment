@@ -48,7 +48,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
         }
 
         immutableController = _settings.immutableController;
-        autoNativeTokenDistribution = _settings.autoNativeTokenDistribution;
+        isAutoNativeCurrencyDistribution = _settings.isAutoNativeCurrencyDistribution;
         minAutoDistributionAmount = _settings.minAutoDistributionAmount;
         factory = IFeeFactory(_settings.factoryAddress);
         platformFee = _settings.platformFee;
@@ -90,15 +90,19 @@ contract RSCPrepayment is BaseRSCPrepayment {
     }
 
     /**
-     * @notice Internal function to redistribute native token based on percentages assign to the recipients
-     * @param _valueToDistribute native token amount to be distribute
+     * @notice Internal function to redistribute native currency based on percentages assign to the recipients
+     * @param _valueToDistribute Native currency amount to be distribute
      */
-    function _redistributeNativeToken(uint256 _valueToDistribute) internal override {
-        // Platform Fee
-        if (platformFee > 0) {
-            uint256 fee = (_valueToDistribute / 10000000) * platformFee;
-            _valueToDistribute -= fee;
-            address payable platformWallet = factory.platformWallet();
+    function _redistributeNativeCurrency(uint256 _valueToDistribute) internal override {
+        uint256 fee = ((_valueToDistribute * platformFee) / 10000000);
+        _valueToDistribute -= fee;
+
+        if (_valueToDistribute < 10000000) {
+            revert TooLowBalanceToRedistribute();
+        }
+
+        address payable platformWallet = factory.platformWallet();
+        if (fee != 0 && platformWallet != address(0)) {
             (bool success, ) = platformWallet.call{ value: fee }("");
             if (success == false) {
                 revert TransferFailedError();
@@ -118,7 +122,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
             if (success == false) {
                 revert TransferFailedError();
             }
-            _recursiveNativeTokenDistribution(investor);
+            _recursiveNativeCurrencyDistribution(investor);
         } else {
             // Investor was not yet fully fulfill, we first fulfill him, and then distribute share to recipients
             if (_valueToDistribute <= investorRemainingAmount) {
@@ -130,7 +134,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
                 if (success == false) {
                     revert TransferFailedError();
                 }
-                _recursiveNativeTokenDistribution(investor);
+                _recursiveNativeCurrencyDistribution(investor);
                 return;
             } else {
                 // msg.value is more than investor will receive, so we send him his part and redistribute the rest
@@ -147,7 +151,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
                     _valueToDistribute -
                     investorRemainingAmount -
                     investorInterestBonus;
-                _recursiveNativeTokenDistribution(investor);
+                _recursiveNativeCurrencyDistribution(investor);
             }
         }
 
@@ -156,12 +160,12 @@ contract RSCPrepayment is BaseRSCPrepayment {
         for (uint256 i = 0; i < recipientsLength; ) {
             address payable recipient = recipients[i];
             uint256 percentage = recipientsPercentage[recipient];
-            uint256 amountToReceive = (amountToDistribute / 10000000) * percentage;
+            uint256 amountToReceive = amountToDistribute * percentage / 10000000;
             (bool success, ) = payable(recipient).call{ value: amountToReceive }("");
             if (success == false) {
                 revert TransferFailedError();
             }
-            _recursiveNativeTokenDistribution(recipient);
+            _recursiveNativeCurrencyDistribution(recipient);
             unchecked {
                 i++;
             }
@@ -175,13 +179,13 @@ contract RSCPrepayment is BaseRSCPrepayment {
     function redistributeToken(address _token) external onlyDistributor {
         IERC20 erc20Token = IERC20(_token);
         uint256 contractBalance = erc20Token.balanceOf(address(this));
-        if (contractBalance == 0) {
-            return;
+        if (contractBalance < 10000000) {
+            revert TooLowBalanceToRedistribute();
         }
 
         // Platform Fee
         if (platformFee > 0) {
-            uint256 fee = (contractBalance / 10000000) * platformFee;
+            uint256 fee = contractBalance * platformFee / 10000000;
             contractBalance -= fee;
             address payable platformWallet = factory.platformWallet();
             erc20Token.safeTransfer(platformWallet, fee);

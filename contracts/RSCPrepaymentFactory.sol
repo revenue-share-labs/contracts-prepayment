@@ -29,7 +29,7 @@ contract RSCPrepaymentFactory is Ownable {
         address controller;
         address[] distributors;
         bool immutableController;
-        bool autoNativeTokenDistribution;
+        bool isAutoNativeCurrencyDistribution;
         uint256 minAutoDistributeAmount;
         address payable investor;
         uint256 investedAmount;
@@ -46,7 +46,7 @@ contract RSCPrepaymentFactory is Ownable {
         address controller;
         address[] distributors;
         bool immutableController;
-        bool autoNativeTokenDistribution;
+        bool isAutoNativeCurrencyDistribution;
         uint256 minAutoDistributeAmount;
         address payable investor;
         uint256 investedAmount;
@@ -66,7 +66,7 @@ contract RSCPrepaymentFactory is Ownable {
         address[] distributors,
         uint256 version,
         bool immutableController,
-        bool autoNativeTokenDistribution,
+        bool isAutoNativeCurrencyDistribution,
         uint256 minAutoDistributeAmount,
         uint256 investedAmount,
         uint256 interestRate,
@@ -80,7 +80,7 @@ contract RSCPrepaymentFactory is Ownable {
         address[] distributors,
         uint256 version,
         bool immutableController,
-        bool autoNativeTokenDistribution,
+        bool isAutoNativeCurrencyDistribution,
         uint256 minAutoDistributeAmount,
         uint256 investedAmount,
         uint256 interestRate,
@@ -126,7 +126,7 @@ contract RSCPrepaymentFactory is Ownable {
                 _data.distributors,
                 _data.controller,
                 _data.immutableController,
-                _data.autoNativeTokenDistribution,
+                _data.isAutoNativeCurrencyDistribution,
                 _data.minAutoDistributeAmount,
                 platformFee,
                 address(this),
@@ -150,7 +150,7 @@ contract RSCPrepaymentFactory is Ownable {
             _data.distributors,
             version,
             _data.immutableController,
-            _data.autoNativeTokenDistribution,
+            _data.isAutoNativeCurrencyDistribution,
             _data.minAutoDistributeAmount,
             _data.investedAmount,
             _data.interestRate,
@@ -188,7 +188,7 @@ contract RSCPrepaymentFactory is Ownable {
                 _data.distributors,
                 _data.controller,
                 _data.immutableController,
-                _data.autoNativeTokenDistribution,
+                _data.isAutoNativeCurrencyDistribution,
                 _data.minAutoDistributeAmount,
                 platformFee,
                 address(this),
@@ -213,7 +213,7 @@ contract RSCPrepaymentFactory is Ownable {
             _data.distributors,
             version,
             _data.immutableController,
-            _data.autoNativeTokenDistribution,
+            _data.isAutoNativeCurrencyDistribution,
             _data.minAutoDistributeAmount,
             _data.investedAmount,
             _data.interestRate,

@@ -31,7 +31,7 @@ describe("RSC Prepayment USD tests", function () {
     controller: any,
     distributors: any,
     immutableController: any,
-    autoNativeTokenDistribution: any,
+    isAutoNativeCurrencyDistribution: any,
     minAutoDistributeAmount: any,
     investor: any,
     investedAmount: any,
@@ -56,7 +56,7 @@ describe("RSC Prepayment USD tests", function () {
       controller: controller,
       distributors: distributors,
       immutableController: immutableController,
-      autoNativeTokenDistribution: autoNativeTokenDistribution,
+      isAutoNativeCurrencyDistribution: isAutoNativeCurrencyDistribution,
       minAutoDistributeAmount: minAutoDistributeAmount,
       investor: investor,
       investedAmount: investedAmount,
@@ -412,7 +412,7 @@ describe("RSC Prepayment USD tests", function () {
           controller: bob.address,
           _distributors: [bob.address],
           immutableController: true,
-          autoNativeTokenDistribution: false,
+          isAutoNativeCurrencyDistribution: false,
           minAutoDistributionAmount: ethers.utils.parseEther("1"),
           platformFee: BigInt(0),
           factoryAddress: alice.address,
@@ -505,7 +505,7 @@ describe("RSC Prepayment USD tests", function () {
     await expect(
       rscUsdPrepaymentManualDistribution
         .connect(addr3)
-        .redistributeNativeToken()
+        .redistributeNativeCurrency()
     ).to.be.revertedWithCustomError(
       rscUsdPrepaymentManualDistribution,
       "OnlyDistributorError"
@@ -514,7 +514,7 @@ describe("RSC Prepayment USD tests", function () {
     const investorBalanceBefore = (
       await ethers.provider.getBalance(investor.address)
     ).toBigInt();
-    await rscUsdPrepaymentManualDistribution.redistributeNativeToken();
+    await rscUsdPrepaymentManualDistribution.redistributeNativeCurrency();
 
     const contractBalance2 = (
       await ethers.provider.getBalance(
@@ -573,7 +573,7 @@ describe("RSC Prepayment USD tests", function () {
       controller: owner.address,
       distributors: [owner.address],
       immutableController: false,
-      autoNativeTokenDistribution: true,
+      isAutoNativeCurrencyDistribution: true,
       minAutoDistributeAmount: ethers.utils.parseEther("1"),
       investor: investor.address,
       investedAmount: ethers.utils.parseEther("100000"),
@@ -674,7 +674,7 @@ describe("RSC Prepayment USD tests", function () {
       controller: owner.address,
       distributors: [owner.address],
       immutableController: false,
-      autoNativeTokenDistribution: true,
+      isAutoNativeCurrencyDistribution: true,
       minAutoDistributeAmount: ethers.utils.parseEther("1"),
       investor: investor.address,
       investedAmount: ethers.utils.parseEther("100000"),
@@ -693,7 +693,7 @@ describe("RSC Prepayment USD tests", function () {
         controller: owner.address,
         distributors: [owner.address],
         immutableController: false,
-        autoNativeTokenDistribution: true,
+        isAutoNativeCurrencyDistribution: true,
         minAutoDistributeAmount: ethers.utils.parseEther("1"),
         investor: investor.address,
         investedAmount: ethers.utils.parseEther("100000"),
@@ -715,7 +715,7 @@ describe("RSC Prepayment USD tests", function () {
       controller: owner.address,
       distributors: [owner.address],
       immutableController: false,
-      autoNativeTokenDistribution: true,
+      isAutoNativeCurrencyDistribution: true,
       minAutoDistributeAmount: ethers.utils.parseEther("1"),
       investor: investor.address,
       investedAmount: ethers.utils.parseEther("100000"),
@@ -854,7 +854,7 @@ describe("RSC Prepayment USD tests", function () {
       rscPrepaymentUsdMain.address,
       true
     );
-    await rscPrepaymentUsdMain.redistributeNativeToken();
+    await rscPrepaymentUsdMain.redistributeNativeCurrency();
 
     expect(
       await ethers.provider.getBalance(rscPrepaymentUsdMain.address)
