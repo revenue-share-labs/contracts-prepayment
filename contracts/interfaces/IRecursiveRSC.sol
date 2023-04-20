@@ -7,7 +7,7 @@ interface IRecursiveRSC {
 
     function redistributeToken(address _token) external;
 
-    function redistributeNativeToken() external;
+    function redistributeNativeCurrency() external;
 
-    function autoNativeTokenDistribution() external returns (bool);
+    function isAutoNativeCurrencyDistribution() external returns (bool);
 }

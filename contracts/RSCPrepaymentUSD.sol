@@ -56,7 +56,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
         }
 
         immutableController = _settings.immutableController;
-        autoNativeTokenDistribution = _settings.autoNativeTokenDistribution;
+        isAutoNativeCurrencyDistribution = _settings.isAutoNativeCurrencyDistribution;
         minAutoDistributionAmount = _settings.minAutoDistributionAmount;
         factory = IFeeFactory(_settings.factoryAddress);
         platformFee = _settings.platformFee;
@@ -97,7 +97,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
      * @notice Internal function to redistribute native token based on percentages assign to the recipients
      * @param _valueToDistribute native token amount to be distribute
      */
-    function _redistributeNativeToken(uint256 _valueToDistribute) internal override {
+    function _redistributeNativeCurrency(uint256 _valueToDistribute) internal override {
         // Platform Fee
         if (platformFee > 0) {
             uint256 fee = (_valueToDistribute / 10000000) * platformFee;
@@ -126,7 +126,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
             if (success == false) {
                 revert TransferFailedError();
             }
-            _recursiveNativeTokenDistribution(investor);
+            _recursiveNativeCurrencyDistribution(investor);
         } else {
             // Investor was not yet fully fulfill, we first fulfill him, and then distribute share to recipients
             if (_valueToDistribute <= investorRemainingAmountNativeToken) {
@@ -138,7 +138,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
                 if (success == false) {
                     revert TransferFailedError();
                 }
-                _recursiveNativeTokenDistribution(investor);
+                _recursiveNativeCurrencyDistribution(investor);
                 return;
             } else {
                 // msg.value is more than investor will receive, so we send him his part and redistribute the rest
@@ -153,7 +153,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
                 if (success == false) {
                     revert TransferFailedError();
                 }
-                _recursiveNativeTokenDistribution(investor);
+                _recursiveNativeCurrencyDistribution(investor);
                 amountToDistribute =
                     _valueToDistribute -
                     investorRemainingAmountNativeToken -
@@ -170,7 +170,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
             if (success == false) {
                 revert TransferFailedError();
             }
-            _recursiveNativeTokenDistribution(recipient);
+            _recursiveNativeCurrencyDistribution(recipient);
             unchecked {
                 i++;
             }
@@ -178,8 +178,8 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
     }
 
     /**
-     * @notice Internal function to convert native token value to Usd value
-     * @param _nativeTokenValue native token value to be converted
+     * @notice Internal function to convert native currency value to Usd value
+     * @param _nativeTokenValue Native currency value to be converted
      */
     function _convertNativeTokenToUsd(
         uint256 _nativeTokenValue

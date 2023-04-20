@@ -37,11 +37,21 @@ error ImmutableControllerError();
 // Throw when investor address is 0
 error InvestorAddressZeroError();
 
+// Throw when change is triggered for immutable recipients
+error ImmutableRecipientsError();
+
+// Throw when renounce ownership is called
+error RenounceOwnershipForbidden();
+
+// Throw when amount to distribute is less than 10000000
+error TooLowBalanceToRedistribute();
+
 abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     mapping(address => bool) public distributors;
     address public controller;
+    bool public isImmutableRecipients;
     bool public immutableController;
-    bool public autoNativeTokenDistribution;
+    bool public isAutoNativeCurrencyDistribution;
     uint256 public minAutoDistributionAmount;
     uint256 public platformFee;
     IFeeFactory public factory;
@@ -62,7 +72,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         address[] _distributors;
         address controller;
         bool immutableController;
-        bool autoNativeTokenDistribution;
+        bool isAutoNativeCurrencyDistribution;
         uint256 minAutoDistributionAmount;
         uint256 platformFee;
         address factoryAddress;
@@ -74,6 +84,9 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     event DistributeToken(address token, uint256 amount);
     event DistributorChanged(address distributor, bool isDistributor);
     event ControllerChanged(address oldController, address newController);
+    event MinAutoDistributionAmountChanged(uint256 oldAmount, uint256 newAmount);
+    event AutoNativeCurrencyDistributionChanged(bool oldValue, bool newValue);
+    event ImmutableRecipients(bool isImmutableRecipients);
 
     /**
      * @dev Throws if sender is not distributor
@@ -96,20 +109,26 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     }
 
     fallback() external payable {
-        // Check whether automatic native token distribution is enabled
+        // Check whether automatic native currency distribution is enabled
         // and that contractBalance is high enough to automatic distribution
         uint256 contractBalance = address(this).balance;
-        if (autoNativeTokenDistribution && contractBalance >= minAutoDistributionAmount) {
-            _redistributeNativeToken(contractBalance);
+        if (
+            isAutoNativeCurrencyDistribution &&
+            contractBalance >= minAutoDistributionAmount
+        ) {
+            _redistributeNativeCurrency(contractBalance);
         }
     }
 
     receive() external payable {
         // Check whether automatic eth distribution is enabled
-        // and that contractBalance is native token enough to automatic distribution
+        // and that contractBalance is native currency enough to automatic distribution
         uint256 contractBalance = address(this).balance;
-        if (autoNativeTokenDistribution && contractBalance >= minAutoDistributionAmount) {
-            _redistributeNativeToken(contractBalance);
+        if (
+            isAutoNativeCurrencyDistribution &&
+            contractBalance >= minAutoDistributionAmount
+        ) {
+            _redistributeNativeCurrency(contractBalance);
         }
     }
 
@@ -121,16 +140,16 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     }
 
     /**
-     * @notice Internal function to redistribute native token based on percentages assign to the recipients
-     * @param _valueToDistribute native token amount to be distribute
+     * @notice Internal function to redistribute native currency based on percentages assign to the recipients
+     * @param _valueToDistribute Native currency amount to be distribute
      */
-    function _redistributeNativeToken(uint256 _valueToDistribute) internal virtual {}
+    function _redistributeNativeCurrency(uint256 _valueToDistribute) internal virtual {}
 
     /**
-     * @notice External function to redistribute NativeToken based on percentages assign to the recipients
+     * @notice External function to redistribute NativeCurrency based on percentages assign to the recipients
      */
-    function redistributeNativeToken() external onlyDistributor {
-        _redistributeNativeToken(address(this).balance);
+    function redistributeNativeCurrency() external onlyDistributor {
+        _redistributeNativeCurrency(address(this).balance);
     }
 
     /**
@@ -154,8 +173,8 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
 
     /**
      * @notice Internal function for adding recipient to revenue share
-     * @param _recipient Fixed amount of token user want to buy
-     * @param _percentage code of the affiliation partner
+     * @param _recipient Recipient address
+     * @param _percentage Recipient percentage
      */
     function _addRecipient(address payable _recipient, uint256 _percentage) internal {
         if (_recipient == address(0)) {
@@ -260,7 +279,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     /**
      * @notice Internal function to check whether recipient should be recursively distributed
      * @param _recipient Address of recipient to recursively distribute
-     * @param _token token to be distributed
+     * @param _token Token to be distributed
      */
     function _recursiveERC20Distribution(address _recipient, address _token) internal {
         // Handle Recursive token distribution
@@ -289,8 +308,8 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
      * @notice Internal function to check whether recipient should be recursively distributed
      * @param _recipient Address of recipient to recursively distribute
      */
-    function _recursiveNativeTokenDistribution(address _recipient) internal {
-        // Handle Recursive token distribution
+    function _recursiveNativeCurrencyDistribution(address _recipient) internal {
+        // Handle Recursive currency distribution
         IRecursiveRSC recursiveRecipient = IRecursiveRSC(_recipient);
 
         // Wallets have size 0 and contracts > 0. This way we can distinguish them.
@@ -299,12 +318,12 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
             recipientSize := extcodesize(_recipient)
         }
         if (recipientSize > 0) {
-            // Check whether child recipient have autoNativeTokenDistribution set to true,
-            // if yes tokens will be recursively distributed automatically
-            try recursiveRecipient.autoNativeTokenDistribution() returns (
-                bool childAutoNativeTokenDistribution
+            // Check whether child recipient have autoNativeCurrencyDistribution set to true,
+            // if yes currency will be recursively distributed automatically
+            try recursiveRecipient.isAutoNativeCurrencyDistribution() returns (
+                bool childAutoNativeCurrencyDistribution
             ) {
-                if (childAutoNativeTokenDistribution == true) {
+                if (childAutoNativeCurrencyDistribution == true) {
                     return;
                 }
             } catch {
@@ -316,11 +335,68 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
                 bool isBranchDistributor
             ) {
                 if (isBranchDistributor) {
-                    recursiveRecipient.redistributeNativeToken();
+                    recursiveRecipient.redistributeNativeCurrency();
                 }
             } catch {
                 return;
             } // unable to recursively distribute
         }
+    }
+
+    /**
+     * @notice Internal function for setting immutable recipients to true
+     */
+    function _setImmutableRecipients() internal {
+        emit ImmutableRecipients(true);
+        isImmutableRecipients = true;
+    }
+
+    /**
+     * @notice External function for setting immutable recipients to true
+     */
+    function setImmutableRecipients() external onlyOwner {
+        if (isImmutableRecipients) {
+            revert ImmutableRecipientsError();
+        }
+
+        _setImmutableRecipients();
+    }
+
+    /**
+     * @notice External function for setting auto native currency distribution
+     * @param _isAutoNativeCurrencyDistribution Bool switching whether auto native currency distribution is enabled
+     */
+    function setAutoNativeCurrencyDistribution(
+        bool _isAutoNativeCurrencyDistribution
+    ) external onlyOwner {
+        emit AutoNativeCurrencyDistributionChanged(
+            isAutoNativeCurrencyDistribution,
+            _isAutoNativeCurrencyDistribution
+        );
+        isAutoNativeCurrencyDistribution = _isAutoNativeCurrencyDistribution;
+    }
+
+    /**
+     * @notice External function for setting minimun auto distribution amount
+     * @param _minAutoDistributionAmount New minimum distribution amount
+     */
+    function setMinAutoDistributionAmount(
+        uint256 _minAutoDistributionAmount
+    ) external onlyOwner {
+        emit MinAutoDistributionAmountChanged(
+            minAutoDistributionAmount,
+            _minAutoDistributionAmount
+        );
+        minAutoDistributionAmount = _minAutoDistributionAmount;
+    }
+
+    /**
+     * @dev Leaves the contract without owner. It will not be possible to call
+     * `onlyOwner` functions anymore. Can only be called by the current owner.
+     *
+     * NOTE: Renouncing ownership will is forbidden for RSC contract
+     */
+    function renounceOwnership() public view override onlyOwner {
+        revert RenounceOwnershipForbidden();
     }
 }
