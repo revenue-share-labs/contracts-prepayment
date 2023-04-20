@@ -112,7 +112,10 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         // Check whether automatic native currency distribution is enabled
         // and that contractBalance is high enough to automatic distribution
         uint256 contractBalance = address(this).balance;
-        if (isAutoNativeCurrencyDistribution && contractBalance >= minAutoDistributionAmount) {
+        if (
+            isAutoNativeCurrencyDistribution &&
+            contractBalance >= minAutoDistributionAmount
+        ) {
             _redistributeNativeCurrency(contractBalance);
         }
     }
@@ -121,7 +124,10 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         // Check whether automatic eth distribution is enabled
         // and that contractBalance is native currency enough to automatic distribution
         uint256 contractBalance = address(this).balance;
-        if (isAutoNativeCurrencyDistribution && contractBalance >= minAutoDistributionAmount) {
+        if (
+            isAutoNativeCurrencyDistribution &&
+            contractBalance >= minAutoDistributionAmount
+        ) {
             _redistributeNativeCurrency(contractBalance);
         }
     }

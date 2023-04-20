@@ -160,7 +160,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
         for (uint256 i = 0; i < recipientsLength; ) {
             address payable recipient = recipients[i];
             uint256 percentage = recipientsPercentage[recipient];
-            uint256 amountToReceive = amountToDistribute * percentage / 10000000;
+            uint256 amountToReceive = (amountToDistribute * percentage) / 10000000;
             (bool success, ) = payable(recipient).call{ value: amountToReceive }("");
             if (success == false) {
                 revert TransferFailedError();
@@ -185,7 +185,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
 
         // Platform Fee
         if (platformFee > 0) {
-            uint256 fee = contractBalance * platformFee / 10000000;
+            uint256 fee = (contractBalance * platformFee) / 10000000;
             contractBalance -= fee;
             address payable platformWallet = factory.platformWallet();
             erc20Token.safeTransfer(platformWallet, fee);

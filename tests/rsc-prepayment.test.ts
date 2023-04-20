@@ -314,7 +314,10 @@ describe(" RSC Prepayment tests", function () {
     });
     await expect(
       rscPrepaymentContract.redistributeNativeCurrency()
-    ).to.be.revertedWithCustomError(rscPrepaymentContract, "TooLowBalanceToRedistribute");
+    ).to.be.revertedWithCustomError(
+      rscPrepaymentContract,
+      "TooLowBalanceToRedistribute"
+    );
 
     // With mock contract as investor
     let tx = await rscPrepaymentFactory.createRSCPrepayment({
@@ -397,10 +400,13 @@ describe(" RSC Prepayment tests", function () {
 
     await expect(
       rscPrepaymentContract.redistributeToken(testToken.address)
-    ).to.be.revertedWithCustomError(rscPrepaymentContract, "TooLowBalanceToRedistribute");
-    expect(await testToken.balanceOf(rscPrepaymentContract.address)).to.be.equal(
-      amountToDistribute
+    ).to.be.revertedWithCustomError(
+      rscPrepaymentContract,
+      "TooLowBalanceToRedistribute"
     );
+    expect(
+      await testToken.balanceOf(rscPrepaymentContract.address)
+    ).to.be.equal(amountToDistribute);
     expect(await testToken.balanceOf(alice.address)).to.be.equal(0);
     expect(await testToken.balanceOf(bob.address)).to.be.equal(0);
 
@@ -418,7 +424,10 @@ describe(" RSC Prepayment tests", function () {
     });
     await expect(
       rscPrepaymentContract.redistributeNativeCurrency()
-    ).to.be.revertedWithCustomError(rscPrepaymentContract, "TooLowBalanceToRedistribute");
+    ).to.be.revertedWithCustomError(
+      rscPrepaymentContract,
+      "TooLowBalanceToRedistribute"
+    );
 
     const aliceBalanceAfter = (
       await ethers.provider.getBalance(alice.address)
@@ -751,7 +760,9 @@ describe(" RSC Prepayment tests", function () {
     expect(contractBalance).to.be.equal(ethers.utils.parseEther("50"));
 
     await expect(
-      rscPrepaymentManualDistribution.connect(addr3).redistributeNativeCurrency()
+      rscPrepaymentManualDistribution
+        .connect(addr3)
+        .redistributeNativeCurrency()
     ).to.be.revertedWithCustomError(
       rscPrepaymentManualDistribution,
       "OnlyDistributorError"
