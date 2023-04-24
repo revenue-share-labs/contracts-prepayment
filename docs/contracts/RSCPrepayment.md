@@ -7,6 +7,12 @@ License: MIT
 
 ## Events info
 
+### AutoNativeCurrencyDistributionChanged event
+
+```solidity
+event AutoNativeCurrencyDistributionChanged(bool oldValue, bool newValue);
+```
+
 ### ControllerChanged event
 
 ```solidity
@@ -25,6 +31,12 @@ event DistributeToken(address token, uint256 amount);
 event DistributorChanged(address distributor, bool isDistributor);
 ```
 
+### ImmutableRecipients event
+
+```solidity
+event ImmutableRecipients(bool isImmutableRecipients);
+```
+
 ### Initialized event
 
 ```solidity
@@ -33,6 +45,12 @@ event Initialized(uint8 version);
 
 
 Triggered when the contract has been initialized or reinitialized.
+
+### MinAutoDistributionAmountChanged event
+
+```solidity
+event MinAutoDistributionAmountChanged(uint256 oldAmount, uint256 newAmount);
+```
 
 ### OwnershipTransferred event
 
@@ -64,6 +82,12 @@ error ControllerAlreadyConfiguredError();
 
 ```solidity
 error ImmutableControllerError();
+```
+
+### ImmutableRecipientsError error
+
+```solidity
+error ImmutableRecipientsError();
 ```
 
 ### InconsistentDataLengthError error
@@ -108,10 +132,22 @@ error OnlyDistributorError();
 error RecipientAlreadyAddedError();
 ```
 
+### RenounceOwnershipForbidden error
+
+```solidity
+error RenounceOwnershipForbidden();
+```
+
 ### TokenMissingNativeTokenPriceOracle error
 
 ```solidity
 error TokenMissingNativeTokenPriceOracle();
+```
+
+### TooLowBalanceToRedistribute error
+
+```solidity
+error TooLowBalanceToRedistribute();
 ```
 
 ### TransferFailedError error
@@ -122,10 +158,10 @@ error TransferFailedError();
 
 ## Functions info
 
-### autoNativeTokenDistribution (0x7a904507)
+### BASIS_POINT (0xada5f642)
 
 ```solidity
-function autoNativeTokenDistribution() external view returns (bool);
+function BASIS_POINT() external view returns (uint256);
 ```
 
 ### controller (0xf77c4791)
@@ -152,7 +188,7 @@ function factory() external view returns (address);
 function immutableController() external view returns (bool);
 ```
 
-### initialize (0x76c233ec)
+### initialize (0xa3633315)
 
 ```solidity
 function initialize(
@@ -212,6 +248,18 @@ function investorAmountToReceive() external view returns (uint256);
 function investorReceivedAmount() external view returns (uint256);
 ```
 
+### isAutoNativeCurrencyDistribution (0x0808e1c6)
+
+```solidity
+function isAutoNativeCurrencyDistribution() external view returns (bool);
+```
+
+### isImmutableRecipients (0xeaf4598a)
+
+```solidity
+function isImmutableRecipients() external view returns (bool);
+```
+
 ### minAutoDistributionAmount (0x478f425a)
 
 ```solidity
@@ -254,14 +302,14 @@ function recipients(uint256) external view returns (address);
 function recipientsPercentage(address) external view returns (uint256);
 ```
 
-### redistributeNativeToken (0x6194e63c)
+### redistributeNativeCurrency (0x3d12394a)
 
 ```solidity
-function redistributeNativeToken() external;
+function redistributeNativeCurrency() external;
 ```
 
 
-External function to redistribute NativeToken based on percentages assign to the recipients
+External function to redistribute NativeCurrency based on percentages assign to the recipients
 
 ### redistributeToken (0xf4d3bdec)
 
@@ -282,17 +330,33 @@ Parameters:
 ### renounceOwnership (0x715018a6)
 
 ```solidity
-function renounceOwnership() external;
+function renounceOwnership() external view;
 ```
 
 
-Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.
+Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will is forbidden for RSC contract
 
 ### residualInterestRate (0x936c1d86)
 
 ```solidity
 function residualInterestRate() external view returns (uint256);
 ```
+
+### setAutoNativeCurrencyDistribution (0x3d39e377)
+
+```solidity
+function setAutoNativeCurrencyDistribution(bool _isAutoNativeCurrencyDistribution) external;
+```
+
+
+External function for setting auto native currency distribution
+
+
+Parameters:
+
+| Name                              | Type | Description                                                         |
+| :-------------------------------- | :--- | :------------------------------------------------------------------ |
+| _isAutoNativeCurrencyDistribution | bool | Bool switching whether auto native currency distribution is enabled |
 
 ### setController (0x92eefe9b)
 
@@ -326,6 +390,31 @@ Parameters:
 | :------------- | :------ | :----------------------------------------------------- |
 | _distributor   | address | address of new distributor                             |
 | _isDistributor | bool    | bool indicating whether address is / isn't distributor |
+
+### setImmutableRecipients (0x50a2f6c8)
+
+```solidity
+function setImmutableRecipients() external;
+```
+
+
+External function for setting immutable recipients to true
+
+### setMinAutoDistributionAmount (0xf432c79f)
+
+```solidity
+function setMinAutoDistributionAmount(uint256 _minAutoDistributionAmount) external;
+```
+
+
+External function for setting minimun auto distribution amount
+
+
+Parameters:
+
+| Name                       | Type    | Description                     |
+| :------------------------- | :------ | :------------------------------ |
+| _minAutoDistributionAmount | uint256 | New minimum distribution amount |
 
 ### setRecipients (0xae373c1b)
 

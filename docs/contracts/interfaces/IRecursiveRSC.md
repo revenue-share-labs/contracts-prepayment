@@ -7,22 +7,22 @@ License: MIT
 
 ## Functions info
 
-### autoNativeTokenDistribution (0x7a904507)
-
-```solidity
-function autoNativeTokenDistribution() external returns (bool);
-```
-
 ### distributors (0xcc642784)
 
 ```solidity
 function distributors(address _distributor) external returns (bool);
 ```
 
-### redistributeNativeToken (0x6194e63c)
+### isAutoNativeCurrencyDistribution (0x0808e1c6)
 
 ```solidity
-function redistributeNativeToken() external;
+function isAutoNativeCurrencyDistribution() external returns (bool);
+```
+
+### redistributeNativeCurrency (0x3d12394a)
+
+```solidity
+function redistributeNativeCurrency() external;
 ```
 
 ### redistributeToken (0xf4d3bdec)
