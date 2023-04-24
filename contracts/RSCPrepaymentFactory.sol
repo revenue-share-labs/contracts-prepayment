@@ -129,7 +129,6 @@ contract RSCPrepaymentFactory is Ownable {
                 _data.isAutoNativeCurrencyDistribution,
                 _data.minAutoDistributeAmount,
                 platformFee,
-                address(this),
                 _data.supportedErc20addresses,
                 _data.erc20PriceFeeds
             );
@@ -191,7 +190,6 @@ contract RSCPrepaymentFactory is Ownable {
                 _data.isAutoNativeCurrencyDistribution,
                 _data.minAutoDistributeAmount,
                 platformFee,
-                address(this),
                 _data.supportedErc20addresses,
                 _data.erc20PriceFeeds
             );

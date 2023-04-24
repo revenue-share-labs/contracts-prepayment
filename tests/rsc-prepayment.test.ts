@@ -550,7 +550,7 @@ describe(" RSC Prepayment tests", function () {
     );
   });
 
-  it("Should redistribute ETH correctly via fallback", async () => {
+  it("Should redistribute ETH correctly via receive", async () => {
     await rscPrepaymentContract.setRecipients(
       [alice.address, bob.address],
       [8000000, 2000000]
@@ -568,7 +568,6 @@ describe(" RSC Prepayment tests", function () {
 
     await owner.sendTransaction({
       to: rscPrepaymentContract.address,
-      data: "0x1234",
       value: ethers.utils.parseEther("50"),
     });
 

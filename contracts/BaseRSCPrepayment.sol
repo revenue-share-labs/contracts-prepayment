@@ -43,10 +43,12 @@ error ImmutableRecipientsError();
 // Throw when renounce ownership is called
 error RenounceOwnershipForbidden();
 
-// Throw when amount to distribute is less than 10000000
+// Throw when amount to distribute is less than BASIS_POINT
 error TooLowBalanceToRedistribute();
 
 abstract contract BaseRSCPrepayment is OwnableUpgradeable {
+    uint256 public constant BASIS_POINT = 10000000;
+
     mapping(address => bool) public distributors;
     address public controller;
     bool public isImmutableRecipients;
@@ -75,7 +77,6 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         bool isAutoNativeCurrencyDistribution;
         uint256 minAutoDistributionAmount;
         uint256 platformFee;
-        address factoryAddress;
         address[] supportedErc20addresses;
         address[] erc20PriceFeeds;
     }
@@ -106,18 +107,6 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
             revert OnlyControllerError();
         }
         _;
-    }
-
-    fallback() external payable {
-        // Check whether automatic native currency distribution is enabled
-        // and that contractBalance is high enough to automatic distribution
-        uint256 contractBalance = address(this).balance;
-        if (
-            isAutoNativeCurrencyDistribution &&
-            contractBalance >= minAutoDistributionAmount
-        ) {
-            _redistributeNativeCurrency(contractBalance);
-        }
     }
 
     receive() external payable {
@@ -168,7 +157,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
             }
         }
 
-        return percentageSum == 10000000;
+        return percentageSum == BASIS_POINT;
     }
 
     /**
