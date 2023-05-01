@@ -26,7 +26,7 @@ error RecipientAlreadyAddedError();
 error InconsistentDataLengthError();
 
 // Throw when sum of percentage is not 100%
-error InvalidPercentageError();
+error InvalidPercentageError(uint256);
 
 // Throw when distributor address is same as submit one
 error ControllerAlreadyConfiguredError();
@@ -53,7 +53,6 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     bool public isAutoNativeCurrencyDistribution;
     uint256 public minAutoDistributionAmount;
     uint256 public platformFee;
-    IFeeFactory public factory;
 
     uint256 public interestRate;
     uint256 public residualInterestRate;
@@ -63,8 +62,20 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     uint256 public investorAmountToReceive;
     uint256 public investorReceivedAmount;
 
+    /// Factory address.
+    IFeeFactory public factory;
+
+    /// Array of the recipients.
     address payable[] public recipients;
+
+    /// recipientAddress => recipientPercentage
     mapping(address => uint256) public recipientsPercentage;
+
+    /// Contains recipient address and their percentage in rev share.
+    struct RecipientData {
+        address payable addrs;
+        uint256 percentage;
+    }
 
     struct InitContractSetting {
         address owner;
@@ -74,23 +85,37 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         bool isAutoNativeCurrencyDistribution;
         uint256 minAutoDistributionAmount;
         uint256 platformFee;
-        address[] supportedErc20addresses;
+        IERC20[] supportedErc20addresses;
         address[] erc20PriceFeeds;
     }
 
-    event SetRecipients(address payable[] recipients, uint256[] percentages);
-    event DistributeToken(address token, uint256 amount);
+    /// Emitted when recipients and their percentages are set.
+    event SetRecipients(RecipientData[] recipients);
+
+    /// Emitted when token distribution is triggered.
+    event DistributeToken(IERC20 token, uint256 amount);
+
+    /// Emitted when distributor status is set.
     event Distributor(address distributor, bool isDistributor);
+
+    /// Emitted when new controller address is set.
     event Controller(address newController);
+
+    /// Emitted when new `minAutoDistributionAmount` is set.
     event MinAutoDistributionAmount(uint256 newAmount);
+
+    /// Emitted when `isAutoNativeCurrencyDistribution` is set.
     event AutoNativeCurrencyDistribution(bool newValue);
+
+    /// Emitted when recipients set immutable.
     event ImmutableRecipients(bool isImmutableRecipients);
+
 
     /**
      * @dev Throws if sender is not distributor
      */
     modifier onlyDistributor() {
-        if (distributors[msg.sender] == false) {
+        if (!distributors[msg.sender]) {
             revert OnlyDistributorError();
         }
         _;
@@ -194,72 +219,78 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     }
 
     /**
-     * @notice Internal function to set recipients in one TX
-     * @param _newRecipients Addresses to be added as a new recipients
-     * @param _percentages new percentages for recipients
+     * @notice Internal function for setting recipients.
+     * @param _recipients Array of `RecipientData` structs with recipient address and percentage.
      */
-    function _setRecipients(
-        address payable[] memory _newRecipients,
-        uint256[] memory _percentages
-    ) internal {
-        uint256 newRecipientsLength = _newRecipients.length;
-        if (newRecipientsLength != _percentages.length) {
-            revert InconsistentDataLengthError();
+    function _setRecipients(RecipientData[] calldata _recipients) internal {
+        if (isImmutableRecipients) {
+            revert ImmutableRecipientsError();
         }
 
         _removeAll();
 
+        uint256 percentageSum;
+        uint256 newRecipientsLength = _recipients.length;
         for (uint256 i = 0; i < newRecipientsLength; ) {
-            _addRecipient(_newRecipients[i], _percentages[i]);
+            uint256 percentage = _recipients[i].percentage;
+            _addRecipient(_recipients[i].addrs, percentage);
+            percentageSum += percentage;
             unchecked {
                 i++;
             }
         }
 
-        if (_percentageIsValid() == false) {
-            revert InvalidPercentageError();
+        if (percentageSum != BASIS_POINT) {
+            revert InvalidPercentageError(percentageSum);
         }
-        emit SetRecipients(_newRecipients, _percentages);
+
+        emit SetRecipients(_recipients);
     }
 
     /**
-     * @notice External function for setting recipients
-     * @param _newRecipients Addresses to be added
-     * @param _percentages new percentages for recipients
+     * @notice External function for setting recipients.
+     * @param _recipients Array of `RecipientData` structs with recipient address and percentage.
      */
-    function setRecipients(
-        address payable[] memory _newRecipients,
-        uint256[] memory _percentages
-    ) public onlyController {
-        _setRecipients(_newRecipients, _percentages);
+    function setRecipients(RecipientData[] calldata _recipients) public onlyController {
+        _setRecipients(_recipients);
     }
 
     /**
-     * @notice External function to set distributor address
-     * @param _distributor address of new distributor
-     * @param _isDistributor bool indicating whether address is / isn't distributor
+     * @notice External function for setting immutable recipients.
+     * @param _recipients Array of `RecipientData` structs with recipient address and percentage.
+     */
+    function setRecipientsExt(
+        RecipientData[] calldata _recipients
+    ) public onlyController {
+        _setRecipients(_recipients);
+        _setImmutableRecipients();
+    }
+
+    /**
+     * @notice External function to set distributor address.
+     * @param _distributor Address of new distributor.
+     * @param _isDistributor Bool indicating whether address is / isn't distributor.
      */
     function setDistributor(
         address _distributor,
         bool _isDistributor
     ) external onlyOwner {
-        emit Distributor(_distributor, _isDistributor);
-        distributors[_distributor] = _isDistributor;
+        bool isDistributor = distributors[_distributor];
+        if (isDistributor != _isDistributor) {
+            emit Distributor(_distributor, _isDistributor);
+            distributors[_distributor] = _isDistributor;
+        }
     }
 
     /**
-     * @notice External function to set controller address, if set to address(0), unable to change it
-     * @param _controller address of new controller
+     * @notice External function to set controller address.
+     * @param _controller Address of new controller.
      */
     function setController(address _controller) external onlyOwner {
-        if (controller == address(0) || isImmutableController) {
-            revert ImmutableControllerError();
+        if (controller != _controller) {
+            emit Controller(_controller);
+            controller = _controller;
         }
-        if (_controller == controller) {
-            revert ControllerAlreadyConfiguredError();
-        }
-        emit Controller(_controller);
-        controller = _controller;
     }
 
     /**
@@ -267,7 +298,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
      * @param _recipient Address of recipient to recursively distribute
      * @param _token Token to be distributed
      */
-    function _recursiveERC20Distribution(address _recipient, address _token) internal {
+    function _recursiveERC20Distribution(address _recipient, IERC20 _token) internal {
         // Handle Recursive token distribution
         IRecursiveRSC recursiveRecipient = IRecursiveRSC(_recipient);
 
@@ -330,15 +361,17 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     }
 
     /**
-     * @notice Internal function for setting immutable recipients to true
+     * @notice Internal function for setting immutable recipients to true.
      */
     function _setImmutableRecipients() internal {
-        emit ImmutableRecipients(true);
-        isImmutableRecipients = true;
+        if (!isImmutableRecipients) {
+            emit ImmutableRecipients(true);
+            isImmutableRecipients = true;
+        }
     }
 
     /**
-     * @notice External function for setting immutable recipients to true
+     * @notice External function for setting immutable recipients to true.
      */
     function setImmutableRecipients() external onlyOwner {
         if (isImmutableRecipients) {
@@ -349,32 +382,36 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     }
 
     /**
-     * @notice External function for setting auto native currency distribution
-     * @param _isAutoNativeCurrencyDistribution Bool switching whether auto native currency distribution is enabled
+     * @notice External function for setting auto native currency distribution.
+     * @param _isAutoNativeCurrencyDistribution Bool switching whether auto native currency distribution is enabled.
      */
     function setAutoNativeCurrencyDistribution(
         bool _isAutoNativeCurrencyDistribution
     ) external onlyOwner {
-        emit AutoNativeCurrencyDistribution(_isAutoNativeCurrencyDistribution);
-        isAutoNativeCurrencyDistribution = _isAutoNativeCurrencyDistribution;
+        if (isAutoNativeCurrencyDistribution != _isAutoNativeCurrencyDistribution) {
+            emit AutoNativeCurrencyDistribution(_isAutoNativeCurrencyDistribution);
+            isAutoNativeCurrencyDistribution = _isAutoNativeCurrencyDistribution;
+        }
     }
 
     /**
-     * @notice External function for setting minimun auto distribution amount
-     * @param _minAutoDistributionAmount New minimum distribution amount
+     * @notice External function for setting minimun auto distribution amount.
+     * @param _minAutoDistributionAmount New minimum distribution amount.
      */
     function setMinAutoDistributionAmount(
         uint256 _minAutoDistributionAmount
     ) external onlyOwner {
-        emit MinAutoDistributionAmount(_minAutoDistributionAmount);
-        minAutoDistributionAmount = _minAutoDistributionAmount;
+        if (minAutoDistributionAmount != _minAutoDistributionAmount) {
+            emit MinAutoDistributionAmount(_minAutoDistributionAmount);
+            minAutoDistributionAmount = _minAutoDistributionAmount;
+        }
     }
 
     /**
      * @dev Leaves the contract without owner. It will not be possible to call
      * `onlyOwner` functions anymore. Can only be called by the current owner.
      *
-     * NOTE: Renouncing ownership will is forbidden for RSC contract
+     * NOTE: Renouncing ownership is forbidden for RSC contract.
      */
     function renounceOwnership() public view override onlyOwner {
         revert RenounceOwnershipForbidden();

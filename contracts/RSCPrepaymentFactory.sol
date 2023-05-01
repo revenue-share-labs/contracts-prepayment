@@ -24,7 +24,10 @@ contract RSCPrepaymentFactory is Ownable {
     /// RSCPrepaymentFactory contract version.
     bytes32 public constant VERSION = "1.0";
 
+    /// Current platform fee.
     uint256 public platformFee;
+
+    /// Fee receiver address.
     address payable public platformWallet;
 
     struct RSCPrepaymentCreateData {
@@ -37,9 +40,9 @@ contract RSCPrepaymentFactory is Ownable {
         uint256 investedAmount;
         uint256 interestRate;
         uint256 residualInterestRate;
-        address payable[] initialRecipients;
-        uint256[] percentages;
-        address[] supportedErc20addresses;
+        /// Initial array of recipients addresses.
+        BaseRSCPrepayment.RecipientData[] recipients;
+        IERC20[] supportedErc20addresses;
         address[] erc20PriceFeeds;
         bytes32 creationId;
     }
@@ -102,7 +105,7 @@ contract RSCPrepaymentFactory is Ownable {
                 _data.investedAmount,
                 _data.interestRate,
                 _data.residualInterestRate,
-                _data.initialRecipients,
+                _data.recipients,
                 _data.creationId,
                 _deployer
             )
@@ -166,8 +169,7 @@ contract RSCPrepaymentFactory is Ownable {
             _data.investedAmount,
             _data.interestRate,
             _data.residualInterestRate,
-            _data.initialRecipients,
-            _data.percentages
+            _data.recipients
         );
 
         emit NewRSCPrepayment(
@@ -228,8 +230,7 @@ contract RSCPrepaymentFactory is Ownable {
             _data.interestRate,
             _data.residualInterestRate,
             nativeTokenUsdPriceFeed,
-            _data.initialRecipients,
-            _data.percentages
+            _data.recipients
         );
 
         emit NewRSCPrepaymentUsd(

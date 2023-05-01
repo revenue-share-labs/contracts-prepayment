@@ -7,17 +7,23 @@ License: MIT
 
 ## Events info
 
-### AutoNativeCurrencyDistributionChanged event
+### AutoNativeCurrencyDistribution event
 
 ```solidity
-event AutoNativeCurrencyDistributionChanged(bool oldValue, bool newValue);
+event AutoNativeCurrencyDistribution(bool newValue);
 ```
 
-### ControllerChanged event
+
+Emitted when `isAutoNativeCurrencyDistribution` is set.
+
+### Controller event
 
 ```solidity
-event ControllerChanged(address oldController, address newController);
+event Controller(address newController);
 ```
+
+
+Emitted when new controller address is set.
 
 ### DistributeToken event
 
@@ -25,17 +31,26 @@ event ControllerChanged(address oldController, address newController);
 event DistributeToken(address token, uint256 amount);
 ```
 
-### DistributorChanged event
+
+Emitted when token distribution is triggered.
+
+### Distributor event
 
 ```solidity
-event DistributorChanged(address distributor, bool isDistributor);
+event Distributor(address distributor, bool isDistributor);
 ```
+
+
+Emitted when distributor status is set.
 
 ### ImmutableRecipients event
 
 ```solidity
 event ImmutableRecipients(bool isImmutableRecipients);
 ```
+
+
+Emitted when recipients set immutable.
 
 ### Initialized event
 
@@ -46,11 +61,14 @@ event Initialized(uint8 version);
 
 Triggered when the contract has been initialized or reinitialized.
 
-### MinAutoDistributionAmountChanged event
+### MinAutoDistributionAmount event
 
 ```solidity
-event MinAutoDistributionAmountChanged(uint256 oldAmount, uint256 newAmount);
+event MinAutoDistributionAmount(uint256 newAmount);
 ```
+
+
+Emitted when new `minAutoDistributionAmount` is set.
 
 ### OwnershipTransferred event
 
@@ -61,8 +79,11 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 ### SetRecipients event
 
 ```solidity
-event SetRecipients(address[] recipients, uint256[] percentages);
+event SetRecipients(tuple[] recipients);
 ```
+
+
+Emitted when recipients and their percentages are set.
 
 ### TokenPriceFeedSet event
 
@@ -71,18 +92,6 @@ event TokenPriceFeedSet(address token, address priceFeed);
 ```
 
 ## Errors info
-
-### ControllerAlreadyConfiguredError error
-
-```solidity
-error ControllerAlreadyConfiguredError();
-```
-
-### ImmutableControllerError error
-
-```solidity
-error ImmutableControllerError();
-```
 
 ### ImmutableRecipientsError error
 
@@ -99,7 +108,7 @@ error InconsistentDataLengthError();
 ### InvalidPercentageError error
 
 ```solidity
-error InvalidPercentageError();
+error InvalidPercentageError(uint256);
 ```
 
 ### InvestorAddressZeroError error
@@ -144,12 +153,6 @@ error RenounceOwnershipForbidden();
 error TokenMissingNativeTokenPriceOracle();
 ```
 
-### TooLowBalanceToRedistribute error
-
-```solidity
-error TooLowBalanceToRedistribute();
-```
-
 ### TransferFailedError error
 
 ```solidity
@@ -182,13 +185,10 @@ function distributors(address) external view returns (bool);
 function factory() external view returns (address);
 ```
 
-### immutableController (0x6e4b769a)
 
-```solidity
-function immutableController() external view returns (bool);
-```
+Factory address.
 
-### initialize (0xa3633315)
+### initialize (0xfa360fc8)
 
 ```solidity
 function initialize(
@@ -197,8 +197,7 @@ function initialize(
 	uint256 _investedAmount,
 	uint256 _interestRate,
 	uint256 _residualInterestRate,
-	address[] _initialRecipients,
-	uint256[] _percentages
+	tuple[] _recipients
 ) external;
 ```
 
@@ -208,15 +207,14 @@ Constructor function, can be called only once
 
 Parameters:
 
-| Name                  | Type      | Description                                                               |
-| :-------------------- | :-------- | :------------------------------------------------------------------------ |
-| _settings             | tuple     | Contract settings, check InitContractSetting struct                       |
-| _investor             | address   | Address who invested money and is gonna receive interested rates          |
-| _investedAmount       | uint256   | Amount of invested money from investor                                    |
-| _interestRate         | uint256   | Percentage how much more investor will receive upon his investment amount |
-| _residualInterestRate | uint256   | Percentage how much investor will get after his investment is fulfilled   |
-| _initialRecipients    | address[] | Addresses to be added as a initial recipients                             |
-| _percentages          | uint256[] | percentages for recipients                                                |
+| Name                  | Type    | Description                                                               |
+| :-------------------- | :------ | :------------------------------------------------------------------------ |
+| _settings             | tuple   | Contract settings, check InitContractSetting struct                       |
+| _investor             | address | Address who invested money and is gonna receive interested rates          |
+| _investedAmount       | uint256 | Amount of invested money from investor                                    |
+| _interestRate         | uint256 | Percentage how much more investor will receive upon his investment amount |
+| _residualInterestRate | uint256 | Percentage how much investor will get after his investment is fulfilled   |
+| _recipients           | tuple[] | Array of `RecipientData` structs with recipient address and percentage.   |
 
 ### interestRate (0x7c3a00fd)
 
@@ -252,6 +250,12 @@ function investorReceivedAmount() external view returns (uint256);
 
 ```solidity
 function isAutoNativeCurrencyDistribution() external view returns (bool);
+```
+
+### isImmutableController (0x4cad8b8b)
+
+```solidity
+function isImmutableController() external view returns (bool);
 ```
 
 ### isImmutableRecipients (0xeaf4598a)
@@ -296,11 +300,17 @@ function platformFee() external view returns (uint256);
 function recipients(uint256) external view returns (address);
 ```
 
+
+Array of the recipients.
+
 ### recipientsPercentage (0x1558ab2f)
 
 ```solidity
 function recipientsPercentage(address) external view returns (uint256);
 ```
+
+
+recipientAddress => recipientPercentage
 
 ### redistributeNativeCurrency (0x3d12394a)
 
@@ -334,7 +344,7 @@ function renounceOwnership() external view;
 ```
 
 
-Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will is forbidden for RSC contract
+Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership is forbidden for RSC contract.
 
 ### residualInterestRate (0x936c1d86)
 
@@ -349,14 +359,14 @@ function setAutoNativeCurrencyDistribution(bool _isAutoNativeCurrencyDistributio
 ```
 
 
-External function for setting auto native currency distribution
+External function for setting auto native currency distribution.
 
 
 Parameters:
 
-| Name                              | Type | Description                                                         |
-| :-------------------------------- | :--- | :------------------------------------------------------------------ |
-| _isAutoNativeCurrencyDistribution | bool | Bool switching whether auto native currency distribution is enabled |
+| Name                              | Type | Description                                                          |
+| :-------------------------------- | :--- | :------------------------------------------------------------------- |
+| _isAutoNativeCurrencyDistribution | bool | Bool switching whether auto native currency distribution is enabled. |
 
 ### setController (0x92eefe9b)
 
@@ -365,14 +375,14 @@ function setController(address _controller) external;
 ```
 
 
-External function to set controller address, if set to address(0), unable to change it
+External function to set controller address.
 
 
 Parameters:
 
-| Name        | Type    | Description               |
-| :---------- | :------ | :------------------------ |
-| _controller | address | address of new controller |
+| Name        | Type    | Description                |
+| :---------- | :------ | :------------------------- |
+| _controller | address | Address of new controller. |
 
 ### setDistributor (0xd59ba0df)
 
@@ -381,15 +391,15 @@ function setDistributor(address _distributor, bool _isDistributor) external;
 ```
 
 
-External function to set distributor address
+External function to set distributor address.
 
 
 Parameters:
 
-| Name           | Type    | Description                                            |
-| :------------- | :------ | :----------------------------------------------------- |
-| _distributor   | address | address of new distributor                             |
-| _isDistributor | bool    | bool indicating whether address is / isn't distributor |
+| Name           | Type    | Description                                             |
+| :------------- | :------ | :------------------------------------------------------ |
+| _distributor   | address | Address of new distributor.                             |
+| _isDistributor | bool    | Bool indicating whether address is / isn't distributor. |
 
 ### setImmutableRecipients (0x50a2f6c8)
 
@@ -398,7 +408,7 @@ function setImmutableRecipients() external;
 ```
 
 
-External function for setting immutable recipients to true
+External function for setting immutable recipients to true.
 
 ### setMinAutoDistributionAmount (0xf432c79f)
 
@@ -407,31 +417,46 @@ function setMinAutoDistributionAmount(uint256 _minAutoDistributionAmount) extern
 ```
 
 
-External function for setting minimun auto distribution amount
+External function for setting minimun auto distribution amount.
 
 
 Parameters:
 
-| Name                       | Type    | Description                     |
-| :------------------------- | :------ | :------------------------------ |
-| _minAutoDistributionAmount | uint256 | New minimum distribution amount |
+| Name                       | Type    | Description                      |
+| :------------------------- | :------ | :------------------------------- |
+| _minAutoDistributionAmount | uint256 | New minimum distribution amount. |
 
-### setRecipients (0xae373c1b)
+### setRecipients (0x84890ba3)
 
 ```solidity
-function setRecipients(address[] _newRecipients, uint256[] _percentages) external;
+function setRecipients(tuple[] _recipients) external;
 ```
 
 
-External function for setting recipients
+External function for setting recipients.
 
 
 Parameters:
 
-| Name           | Type      | Description                    |
-| :------------- | :-------- | :----------------------------- |
-| _newRecipients | address[] | Addresses to be added          |
-| _percentages   | uint256[] | new percentages for recipients |
+| Name        | Type    | Description                                                             |
+| :---------- | :------ | :---------------------------------------------------------------------- |
+| _recipients | tuple[] | Array of `RecipientData` structs with recipient address and percentage. |
+
+### setRecipientsExt (0x97bf53b9)
+
+```solidity
+function setRecipientsExt(tuple[] _recipients) external;
+```
+
+
+External function for setting immutable recipients.
+
+
+Parameters:
+
+| Name        | Type    | Description                                                             |
+| :---------- | :------ | :---------------------------------------------------------------------- |
+| _recipients | tuple[] | Array of `RecipientData` structs with recipient address and percentage. |
 
 ### setTokenNativeTokenPriceFeed (0x6b55f4f3)
 
