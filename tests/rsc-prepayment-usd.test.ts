@@ -30,7 +30,7 @@ describe("RSC Prepayment USD tests", function () {
   async function deployRSCPrepaymentUsd(
     controller: any,
     distributors: any,
-    immutableController: any,
+    isImmutableController: any,
     isAutoNativeCurrencyDistribution: any,
     minAutoDistributeAmount: any,
     investor: any,
@@ -52,23 +52,25 @@ describe("RSC Prepayment USD tests", function () {
     );
     const usdPriceFeedMock = await UsdPriceFeedMock.deploy();
 
-    const tx = await rscPrepaymentUsdFactory.createRSCPrepaymentUsd({
-      controller: controller,
-      distributors: distributors,
-      immutableController: immutableController,
-      isAutoNativeCurrencyDistribution: isAutoNativeCurrencyDistribution,
-      minAutoDistributeAmount: minAutoDistributeAmount,
-      investor: investor,
-      investedAmount: investedAmount,
-      interestRate: interestRate,
-      residualInterestRate: residualInterestRate,
-      nativeTokenUsdPriceFeed: usdPriceFeedMock.address,
-      initialRecipients: initialRecipients,
-      percentages: percentages,
-      supportedErc20addresses: supportedErc20addresses,
-      erc20PriceFeeds: [usdPriceFeedMock.address],
-      creationId: creationId,
-    });
+    const tx = await rscPrepaymentUsdFactory.createRSCPrepaymentUsd(
+      {
+        controller: controller,
+        distributors: distributors,
+        isImmutableController: isImmutableController,
+        isAutoNativeCurrencyDistribution: isAutoNativeCurrencyDistribution,
+        minAutoDistributeAmount: minAutoDistributeAmount,
+        investor: investor,
+        investedAmount: investedAmount,
+        interestRate: interestRate,
+        residualInterestRate: residualInterestRate,
+        initialRecipients: initialRecipients,
+        percentages: percentages,
+        supportedErc20addresses: supportedErc20addresses,
+        erc20PriceFeeds: [usdPriceFeedMock.address],
+        creationId: creationId,
+      },
+      usdPriceFeedMock.address
+    );
     let receipt = await tx.wait();
     const rscPrepaymentUsdContractAddress = receipt.events?.[4].args?.[0];
 
@@ -411,7 +413,7 @@ describe("RSC Prepayment USD tests", function () {
           owner: bob.address,
           controller: bob.address,
           _distributors: [bob.address],
-          immutableController: true,
+          isImmutableController: true,
           isAutoNativeCurrencyDistribution: false,
           minAutoDistributionAmount: ethers.utils.parseEther("1"),
           platformFee: BigInt(0),
@@ -569,23 +571,25 @@ describe("RSC Prepayment USD tests", function () {
       BigInt(5000000)
     );
 
-    const txFee = await rscPrepaymentFeeFactory.createRSCPrepaymentUsd({
-      controller: owner.address,
-      distributors: [owner.address],
-      immutableController: false,
-      isAutoNativeCurrencyDistribution: true,
-      minAutoDistributeAmount: ethers.utils.parseEther("1"),
-      investor: investor.address,
-      investedAmount: ethers.utils.parseEther("100000"),
-      interestRate: BigInt("3000"),
-      residualInterestRate: BigInt("500"),
-      nativeTokenUsdPriceFeed: usdPriceFeedMock.address,
-      initialRecipients: [alice.address],
-      percentages: [10000000],
-      supportedErc20addresses: [testToken.address],
-      erc20PriceFeeds: [usdPriceFeedMock.address],
-      creationId: ethers.constants.HashZero,
-    });
+    const txFee = await rscPrepaymentFeeFactory.createRSCPrepaymentUsd(
+      {
+        controller: owner.address,
+        distributors: [owner.address],
+        immutableController: false,
+        isAutoNativeCurrencyDistribution: true,
+        minAutoDistributeAmount: ethers.utils.parseEther("1"),
+        investor: investor.address,
+        investedAmount: ethers.utils.parseEther("100000"),
+        interestRate: BigInt("3000"),
+        residualInterestRate: BigInt("500"),
+        initialRecipients: [alice.address],
+        percentages: [10000000],
+        supportedErc20addresses: [testToken.address],
+        erc20PriceFeeds: [usdPriceFeedMock.address],
+        creationId: ethers.constants.HashZero,
+      },
+      usdPriceFeedMock.address
+    );
 
     let receipt = await txFee.wait();
     const revenueShareContractAddress = receipt.events?.[4].args?.[0];
@@ -670,26 +674,8 @@ describe("RSC Prepayment USD tests", function () {
     const usdPriceFeedMock = await UsdPriceFeedMock.deploy();
     await usdPriceFeedMock.deployed();
 
-    await rscPrepaymentCreationIdFactory.createRSCPrepaymentUsd({
-      controller: owner.address,
-      distributors: [owner.address],
-      immutableController: false,
-      isAutoNativeCurrencyDistribution: true,
-      minAutoDistributeAmount: ethers.utils.parseEther("1"),
-      investor: investor.address,
-      investedAmount: ethers.utils.parseEther("100000"),
-      interestRate: BigInt("3000"),
-      residualInterestRate: BigInt("500"),
-      nativeTokenUsdPriceFeed: usdPriceFeedMock.address,
-      initialRecipients: [alice.address],
-      percentages: [10000000],
-      supportedErc20addresses: [testToken.address],
-      erc20PriceFeeds: [usdPriceFeedMock.address],
-      creationId: ethers.utils.formatBytes32String("test-creation-id-1"),
-    });
-
-    await expect(
-      rscPrepaymentCreationIdFactory.createRSCPrepaymentUsd({
+    await rscPrepaymentCreationIdFactory.createRSCPrepaymentUsd(
+      {
         controller: owner.address,
         distributors: [owner.address],
         immutableController: false,
@@ -699,35 +685,34 @@ describe("RSC Prepayment USD tests", function () {
         investedAmount: ethers.utils.parseEther("100000"),
         interestRate: BigInt("3000"),
         residualInterestRate: BigInt("500"),
-        nativeTokenUsdPriceFeed: usdPriceFeedMock.address,
         initialRecipients: [alice.address],
         percentages: [10000000],
         supportedErc20addresses: [testToken.address],
         erc20PriceFeeds: [usdPriceFeedMock.address],
         creationId: ethers.utils.formatBytes32String("test-creation-id-1"),
-      })
-    ).to.be.revertedWithCustomError(
-      RSCPrepaymentCreationIdFactory,
-      "CreationIdAlreadyProcessed"
+      },
+      usdPriceFeedMock.address
     );
 
-    await rscPrepaymentCreationIdFactory.createRSCPrepaymentUsd({
-      controller: owner.address,
-      distributors: [owner.address],
-      immutableController: false,
-      isAutoNativeCurrencyDistribution: true,
-      minAutoDistributeAmount: ethers.utils.parseEther("1"),
-      investor: investor.address,
-      investedAmount: ethers.utils.parseEther("100000"),
-      interestRate: BigInt("3000"),
-      residualInterestRate: BigInt("500"),
-      nativeTokenUsdPriceFeed: usdPriceFeedMock.address,
-      initialRecipients: [alice.address],
-      percentages: [10000000],
-      supportedErc20addresses: [testToken.address],
-      erc20PriceFeeds: [usdPriceFeedMock.address],
-      creationId: ethers.utils.formatBytes32String("test-creation-id-2"),
-    });
+    await rscPrepaymentCreationIdFactory.createRSCPrepaymentUsd(
+      {
+        controller: owner.address,
+        distributors: [owner.address],
+        immutableController: false,
+        isAutoNativeCurrencyDistribution: true,
+        minAutoDistributeAmount: ethers.utils.parseEther("1"),
+        investor: investor.address,
+        investedAmount: ethers.utils.parseEther("100000"),
+        interestRate: BigInt("3000"),
+        residualInterestRate: BigInt("500"),
+        initialRecipients: [alice.address],
+        percentages: [10000000],
+        supportedErc20addresses: [testToken.address],
+        erc20PriceFeeds: [usdPriceFeedMock.address],
+        creationId: ethers.utils.formatBytes32String("test-creation-id-2"),
+      },
+      usdPriceFeedMock.address
+    );
   });
 
   it("Should recursively erc20 split recipient", async () => {

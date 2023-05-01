@@ -47,7 +47,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
             }
         }
 
-        immutableController = _settings.immutableController;
+        isImmutableController = _settings.isImmutableController;
         isAutoNativeCurrencyDistribution = _settings.isAutoNativeCurrencyDistribution;
         minAutoDistributionAmount = _settings.minAutoDistributionAmount;
         factory = IFeeFactory(msg.sender);
@@ -96,10 +96,6 @@ contract RSCPrepayment is BaseRSCPrepayment {
     function _redistributeNativeCurrency(uint256 _valueToDistribute) internal override {
         uint256 fee = ((_valueToDistribute * platformFee) / BASIS_POINT);
         _valueToDistribute -= fee;
-
-        if (_valueToDistribute < BASIS_POINT) {
-            revert TooLowBalanceToRedistribute();
-        }
 
         address payable platformWallet = factory.platformWallet();
         if (fee != 0 && platformWallet != address(0)) {
@@ -179,9 +175,6 @@ contract RSCPrepayment is BaseRSCPrepayment {
     function redistributeToken(address _token) external onlyDistributor {
         IERC20 erc20Token = IERC20(_token);
         uint256 contractBalance = erc20Token.balanceOf(address(this));
-        if (contractBalance < BASIS_POINT) {
-            revert TooLowBalanceToRedistribute();
-        }
 
         // Platform Fee
         if (platformFee > 0) {

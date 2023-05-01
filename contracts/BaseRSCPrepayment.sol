@@ -43,16 +43,13 @@ error ImmutableRecipientsError();
 // Throw when renounce ownership is called
 error RenounceOwnershipForbidden();
 
-// Throw when amount to distribute is less than BASIS_POINT
-error TooLowBalanceToRedistribute();
-
 abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     uint256 public constant BASIS_POINT = 10000000;
 
     mapping(address => bool) public distributors;
     address public controller;
     bool public isImmutableRecipients;
-    bool public immutableController;
+    bool public isImmutableController;
     bool public isAutoNativeCurrencyDistribution;
     uint256 public minAutoDistributionAmount;
     uint256 public platformFee;
@@ -73,7 +70,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         address owner;
         address[] _distributors;
         address controller;
-        bool immutableController;
+        bool isImmutableController;
         bool isAutoNativeCurrencyDistribution;
         uint256 minAutoDistributionAmount;
         uint256 platformFee;
@@ -83,10 +80,10 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
 
     event SetRecipients(address payable[] recipients, uint256[] percentages);
     event DistributeToken(address token, uint256 amount);
-    event DistributorChanged(address distributor, bool isDistributor);
-    event ControllerChanged(address oldController, address newController);
-    event MinAutoDistributionAmountChanged(uint256 oldAmount, uint256 newAmount);
-    event AutoNativeCurrencyDistributionChanged(bool oldValue, bool newValue);
+    event Distributor(address distributor, bool isDistributor);
+    event Controller(address newController);
+    event MinAutoDistributionAmount(uint256 newAmount);
+    event AutoNativeCurrencyDistribution(bool newValue);
     event ImmutableRecipients(bool isImmutableRecipients);
 
     /**
@@ -246,7 +243,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         address _distributor,
         bool _isDistributor
     ) external onlyOwner {
-        emit DistributorChanged(_distributor, _isDistributor);
+        emit Distributor(_distributor, _isDistributor);
         distributors[_distributor] = _isDistributor;
     }
 
@@ -255,13 +252,13 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
      * @param _controller address of new controller
      */
     function setController(address _controller) external onlyOwner {
-        if (controller == address(0) || immutableController) {
+        if (controller == address(0) || isImmutableController) {
             revert ImmutableControllerError();
         }
         if (_controller == controller) {
             revert ControllerAlreadyConfiguredError();
         }
-        emit ControllerChanged(controller, _controller);
+        emit Controller(_controller);
         controller = _controller;
     }
 
@@ -358,10 +355,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     function setAutoNativeCurrencyDistribution(
         bool _isAutoNativeCurrencyDistribution
     ) external onlyOwner {
-        emit AutoNativeCurrencyDistributionChanged(
-            isAutoNativeCurrencyDistribution,
-            _isAutoNativeCurrencyDistribution
-        );
+        emit AutoNativeCurrencyDistribution(_isAutoNativeCurrencyDistribution);
         isAutoNativeCurrencyDistribution = _isAutoNativeCurrencyDistribution;
     }
 
@@ -372,10 +366,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     function setMinAutoDistributionAmount(
         uint256 _minAutoDistributionAmount
     ) external onlyOwner {
-        emit MinAutoDistributionAmountChanged(
-            minAutoDistributionAmount,
-            _minAutoDistributionAmount
-        );
+        emit MinAutoDistributionAmount(_minAutoDistributionAmount);
         minAutoDistributionAmount = _minAutoDistributionAmount;
     }
 

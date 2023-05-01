@@ -18,10 +18,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
     AggregatorV3Interface internal nativeTokenUsdPriceFeed;
 
     event TokenPriceFeedSet(address token, address priceFeed);
-    event NativeTokenPriceFeedSet(
-        address oldNativeTokenPriceFeed,
-        address newNativeTokenPriceFeed
-    );
+    event NativeTokenPriceFeedSet(address newNativeTokenPriceFeed);
 
     /**
      * @dev Constructor function, can be called only once
@@ -55,7 +52,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
             }
         }
 
-        immutableController = _settings.immutableController;
+        isImmutableController = _settings.isImmutableController;
         isAutoNativeCurrencyDistribution = _settings.isAutoNativeCurrencyDistribution;
         minAutoDistributionAmount = _settings.minAutoDistributionAmount;
         factory = IFeeFactory(msg.sender);
@@ -344,7 +341,7 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
      * @param _priceFeed address of USD price feed for native token
      */
     function setNativeTokenPriceFeed(address _priceFeed) external onlyOwner {
-        emit NativeTokenPriceFeedSet(address(nativeTokenUsdPriceFeed), _priceFeed);
+        emit NativeTokenPriceFeedSet(_priceFeed);
         nativeTokenUsdPriceFeed = AggregatorV3Interface(_priceFeed);
     }
 }

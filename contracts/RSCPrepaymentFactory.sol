@@ -3,32 +3,34 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
-import "contracts/BaseRSCPrepayment.sol";
-import "contracts/RSCPrepayment.sol";
-import "contracts/RSCPrepaymentUSD.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./BaseRSCPrepayment.sol";
+import "./RSCPrepayment.sol";
+import "./RSCPrepaymentUSD.sol";
 
 // Throw when Fee Percentage is more than 100%
 error InvalidFeePercentage();
 
-// Throw when creationId was already created
-error CreationIdAlreadyProcessed();
-
 contract RSCPrepaymentFactory is Ownable {
-    address payable public immutable contractImplementation;
-    address payable public immutable contractImplementationUsd;
+    /// Measurement unit 10000000 = 100%.
+    uint256 public constant BASIS_POINT = 10000000;
 
-    uint256 constant version = 1;
+    /// RSCPrepayment implementation address.
+    RSCPrepayment public immutable contractImplementation;
+
+    /// RSCPrepaymentUSD implementation address.
+    RSCPrepaymentUsd public immutable contractImplementationUsd;
+
+    /// RSCPrepaymentFactory contract version.
+    bytes32 public constant VERSION = "1.0";
+
     uint256 public platformFee;
     address payable public platformWallet;
 
-    // creationId unique ID for each contract creation TX, it prevents users to submit tx twice
-    mapping(bytes32 => bool) public processedCreationIds;
-
-    struct RSCCreateData {
+    struct RSCPrepaymentCreateData {
         address controller;
         address[] distributors;
-        bool immutableController;
+        bool isImmutableController;
         bool isAutoNativeCurrencyDistribution;
         uint256 minAutoDistributeAmount;
         address payable investor;
@@ -42,29 +44,11 @@ contract RSCPrepaymentFactory is Ownable {
         bytes32 creationId;
     }
 
-    struct RSCCreateUsdData {
-        address controller;
-        address[] distributors;
-        bool immutableController;
-        bool isAutoNativeCurrencyDistribution;
-        uint256 minAutoDistributeAmount;
-        address payable investor;
-        uint256 investedAmount;
-        uint256 interestRate;
-        uint256 residualInterestRate;
-        address nativeTokenUsdPriceFeed;
-        address payable[] initialRecipients;
-        uint256[] percentages;
-        address[] supportedErc20addresses;
-        address[] erc20PriceFeeds;
-        bytes32 creationId;
-    }
-
-    event RSCPrepaymentCreated(
+    event NewRSCPrepayment(
         address contractAddress,
         address controller,
         address[] distributors,
-        uint256 version,
+        bytes32 version,
         bool immutableController,
         bool isAutoNativeCurrencyDistribution,
         uint256 minAutoDistributeAmount,
@@ -74,11 +58,11 @@ contract RSCPrepaymentFactory is Ownable {
         bytes32 creationId
     );
 
-    event RSCPrepaymentUsdCreated(
+    event NewRSCPrepaymentUsd(
         address contractAddress,
         address controller,
         address[] distributors,
-        uint256 version,
+        bytes32 version,
         bool immutableController,
         bool isAutoNativeCurrencyDistribution,
         uint256 minAutoDistributeAmount,
@@ -89,16 +73,58 @@ contract RSCPrepaymentFactory is Ownable {
         bytes32 creationId
     );
 
-    event PlatformFeeChanged(uint256 oldFee, uint256 newFee);
+    event PlatformFee(uint256 newFee);
 
-    event PlatformWalletChanged(
-        address payable oldPlatformWallet,
-        address payable newPlatformWallet
-    );
+    event PlatformWallet(address payable newPlatformWallet);
 
     constructor() {
-        contractImplementation = payable(new RSCPrepayment());
-        contractImplementationUsd = payable(new RSCPrepaymentUsd());
+        contractImplementation = new RSCPrepayment();
+        contractImplementationUsd = new RSCPrepaymentUsd();
+    }
+
+    /**
+     * @dev Internal function for getting semi-random salt for deterministicClone creation.
+     * @param _data RSC Create data used for hashing and getting random salt.
+     * @param _deployer Wallet address that want to create new RSC contract.
+     */
+    function _getSalt(
+        RSCPrepaymentCreateData memory _data,
+        address _deployer
+    ) internal pure returns (bytes32) {
+        bytes32 hash = keccak256(
+            abi.encode(
+                _data.controller,
+                _data.distributors,
+                _data.isImmutableController,
+                _data.isAutoNativeCurrencyDistribution,
+                _data.minAutoDistributeAmount,
+                _data.investor,
+                _data.investedAmount,
+                _data.interestRate,
+                _data.residualInterestRate,
+                _data.initialRecipients,
+                _data.creationId,
+                _deployer
+            )
+        );
+        return hash;
+    }
+
+    /**
+     * @dev External function for creating clone proxy pointing to RSC Percentage.
+     * @param _data RSC Create data used for hashing and getting random salt.
+     * @param _deployer Wallet address that want to create new RSC contract.
+     */
+    function predictDeterministicAddress(
+        RSCPrepaymentCreateData memory _data,
+        address _deployer
+    ) external view returns (address) {
+        bytes32 salt = _getSalt(_data, _deployer);
+        address predictedAddress = Clones.predictDeterministicAddress(
+            address(contractImplementation),
+            salt
+        );
+        return predictedAddress;
     }
 
     /**
@@ -106,26 +132,27 @@ contract RSCPrepaymentFactory is Ownable {
      * @param _data Initial data for creating new RSC Prepayment native token contract
      * @return Address of new contract
      */
-    function createRSCPrepayment(RSCCreateData memory _data) external returns (address) {
+    function createRSCPrepayment(
+        RSCPrepaymentCreateData memory _data
+    ) external returns (address) {
         // check and register creationId
         bytes32 creationId = _data.creationId;
+        address payable clone;
         if (creationId != bytes32(0)) {
-            bool processed = processedCreationIds[creationId];
-            if (processed) {
-                revert CreationIdAlreadyProcessed();
-            } else {
-                processedCreationIds[creationId] = true;
-            }
+            bytes32 salt = _getSalt(_data, msg.sender);
+            clone = payable(
+                Clones.cloneDeterministic(address(contractImplementation), salt)
+            );
+        } else {
+            clone = payable(Clones.clone(address(contractImplementation)));
         }
-
-        address payable clone = payable(Clones.clone(contractImplementation));
 
         BaseRSCPrepayment.InitContractSetting memory contractSettings = BaseRSCPrepayment
             .InitContractSetting(
                 msg.sender,
                 _data.distributors,
                 _data.controller,
-                _data.immutableController,
+                _data.isImmutableController,
                 _data.isAutoNativeCurrencyDistribution,
                 _data.minAutoDistributeAmount,
                 platformFee,
@@ -143,12 +170,12 @@ contract RSCPrepaymentFactory is Ownable {
             _data.percentages
         );
 
-        emit RSCPrepaymentCreated(
+        emit NewRSCPrepayment(
             clone,
             _data.controller,
             _data.distributors,
-            version,
-            _data.immutableController,
+            VERSION,
+            _data.isImmutableController,
             _data.isAutoNativeCurrencyDistribution,
             _data.minAutoDistributeAmount,
             _data.investedAmount,
@@ -166,27 +193,27 @@ contract RSCPrepaymentFactory is Ownable {
      * @return Address of new contract
      */
     function createRSCPrepaymentUsd(
-        RSCCreateUsdData memory _data
+        RSCPrepaymentCreateData memory _data,
+        address nativeTokenUsdPriceFeed
     ) external returns (address) {
         // check and register creationId
         bytes32 creationId = _data.creationId;
+        address payable clone;
         if (creationId != bytes32(0)) {
-            bool processed = processedCreationIds[creationId];
-            if (processed) {
-                revert CreationIdAlreadyProcessed();
-            } else {
-                processedCreationIds[creationId] = true;
-            }
+            bytes32 salt = _getSalt(_data, msg.sender);
+            clone = payable(
+                Clones.cloneDeterministic(address(contractImplementationUsd), salt)
+            );
+        } else {
+            clone = payable(Clones.clone(address(contractImplementationUsd)));
         }
-
-        address payable clone = payable(Clones.clone(contractImplementationUsd));
 
         BaseRSCPrepayment.InitContractSetting memory contractSettings = BaseRSCPrepayment
             .InitContractSetting(
                 msg.sender,
                 _data.distributors,
                 _data.controller,
-                _data.immutableController,
+                _data.isImmutableController,
                 _data.isAutoNativeCurrencyDistribution,
                 _data.minAutoDistributeAmount,
                 platformFee,
@@ -200,23 +227,23 @@ contract RSCPrepaymentFactory is Ownable {
             _data.investedAmount,
             _data.interestRate,
             _data.residualInterestRate,
-            _data.nativeTokenUsdPriceFeed,
+            nativeTokenUsdPriceFeed,
             _data.initialRecipients,
             _data.percentages
         );
 
-        emit RSCPrepaymentUsdCreated(
+        emit NewRSCPrepaymentUsd(
             clone,
             _data.controller,
             _data.distributors,
-            version,
-            _data.immutableController,
+            VERSION,
+            _data.isImmutableController,
             _data.isAutoNativeCurrencyDistribution,
             _data.minAutoDistributeAmount,
             _data.investedAmount,
             _data.interestRate,
             _data.residualInterestRate,
-            _data.nativeTokenUsdPriceFeed,
+            nativeTokenUsdPriceFeed,
             creationId
         );
 
@@ -225,13 +252,13 @@ contract RSCPrepaymentFactory is Ownable {
 
     /**
      * @dev Only Owner function for setting platform fee
-     * @param _fee Percentage define platform fee 100% == 10000000
+     * @param _fee Percentage define platform fee 100% == BASIS_POINT
      */
     function setPlatformFee(uint256 _fee) external onlyOwner {
-        if (_fee > 10000000) {
+        if (_fee > BASIS_POINT) {
             revert InvalidFeePercentage();
         }
-        emit PlatformFeeChanged(platformFee, _fee);
+        emit PlatformFee(_fee);
         platformFee = _fee;
     }
 
@@ -240,7 +267,7 @@ contract RSCPrepaymentFactory is Ownable {
      * @param _platformWallet New native token wallet which will receive fees
      */
     function setPlatformWallet(address payable _platformWallet) external onlyOwner {
-        emit PlatformWalletChanged(platformWallet, _platformWallet);
+        emit PlatformWallet(_platformWallet);
         platformWallet = _platformWallet;
     }
 }

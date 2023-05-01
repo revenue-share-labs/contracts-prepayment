@@ -303,27 +303,11 @@ describe(" RSC Prepayment tests", function () {
   });
 
   it("TransferFailedError()", async () => {
-    // With mock contract as recipient
-    await rscPrepaymentContract.setRecipients(
-      [mockReceiver.address],
-      [10000000]
-    );
-    await owner.sendTransaction({
-      to: rscPrepaymentContract.address,
-      value: ethers.utils.parseEther("130"),
-    });
-    await expect(
-      rscPrepaymentContract.redistributeNativeCurrency()
-    ).to.be.revertedWithCustomError(
-      rscPrepaymentContract,
-      "TooLowBalanceToRedistribute"
-    );
-
     // With mock contract as investor
     let tx = await rscPrepaymentFactory.createRSCPrepayment({
       controller: owner.address,
       distributors: [owner.address],
-      immutableController: true,
+      isImmutableController: true,
       isAutoNativeCurrencyDistribution: false,
       minAutoDistributeAmount: ethers.utils.parseEther("1"),
       investor: mockReceiver.address,
@@ -386,57 +370,6 @@ describe(" RSC Prepayment tests", function () {
     await expect(
       rscPrepaymentFee.redistributeNativeCurrency()
     ).to.be.revertedWithCustomError(rscPrepaymentFee, "TransferFailedError");
-  });
-
-  it("TooLowBalanceToRedistribute()", async () => {
-    await rscPrepaymentContract.setRecipients(
-      [alice.address, bob.address],
-      [2000000, 8000000]
-    );
-
-    // With tokens
-    const amountToDistribute = ethers.utils.parseEther("0.000000000001");
-    await testToken.transfer(rscPrepaymentContract.address, amountToDistribute);
-
-    await expect(
-      rscPrepaymentContract.redistributeToken(testToken.address)
-    ).to.be.revertedWithCustomError(
-      rscPrepaymentContract,
-      "TooLowBalanceToRedistribute"
-    );
-    expect(
-      await testToken.balanceOf(rscPrepaymentContract.address)
-    ).to.be.equal(amountToDistribute);
-    expect(await testToken.balanceOf(alice.address)).to.be.equal(0);
-    expect(await testToken.balanceOf(bob.address)).to.be.equal(0);
-
-    // With ether
-    const aliceBalanceBefore = (
-      await ethers.provider.getBalance(alice.address)
-    ).toBigInt();
-    const bobBalanceBefore = (
-      await ethers.provider.getBalance(bob.address)
-    ).toBigInt();
-
-    await owner.sendTransaction({
-      to: rscPrepaymentContract.address,
-      value: ethers.utils.parseEther("0.000000000001"),
-    });
-    await expect(
-      rscPrepaymentContract.redistributeNativeCurrency()
-    ).to.be.revertedWithCustomError(
-      rscPrepaymentContract,
-      "TooLowBalanceToRedistribute"
-    );
-
-    const aliceBalanceAfter = (
-      await ethers.provider.getBalance(alice.address)
-    ).toBigInt();
-    const bobBalanceAfter = (
-      await ethers.provider.getBalance(bob.address)
-    ).toBigInt();
-    expect(aliceBalanceAfter).to.be.equal(aliceBalanceBefore);
-    expect(bobBalanceAfter).to.be.equal(bobBalanceBefore);
   });
 
   it("Should redistribute eth correctly", async () => {
@@ -920,28 +853,6 @@ describe(" RSC Prepayment tests", function () {
       erc20PriceFeeds: [ethPriceFeedMock.address],
       creationId: ethers.utils.formatBytes32String("test-creation-id-1"),
     });
-
-    await expect(
-      rscPrepaymentCreationIdFactory.createRSCPrepayment({
-        controller: owner.address,
-        distributors: [owner.address],
-        immutableController: false,
-        isAutoNativeCurrencyDistribution: true,
-        minAutoDistributeAmount: ethers.utils.parseEther("1"),
-        investor: investor.address,
-        investedAmount: ethers.utils.parseEther("100"),
-        interestRate: BigInt("3000"),
-        residualInterestRate: BigInt("500"),
-        initialRecipients: [alice.address],
-        percentages: [10000000],
-        supportedErc20addresses: [testToken.address],
-        erc20PriceFeeds: [ethPriceFeedMock.address],
-        creationId: ethers.utils.formatBytes32String("test-creation-id-1"),
-      })
-    ).to.be.revertedWithCustomError(
-      RSCPrepaymentCreationIdFactory,
-      "CreationIdAlreadyProcessed"
-    );
 
     await rscPrepaymentCreationIdFactory.createRSCPrepayment({
       controller: owner.address,
