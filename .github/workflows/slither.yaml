@@ -1,54 +1,28 @@
-name: Run Slither Static Analysis
+name: Run Slither Analysis
 
 on:
   - push
   - pull_request
 
 jobs:
-  build:
+  analyze:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.9]
-        node-version: [18.x]
-
+    permissions:
+      contents: read
+      security-events: write
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+      - name: Run Slither
+        uses: crytic/slither-action@v0.3.0
+        id: slither
         with:
-          node-version: ${{ matrix.node-version }}
-      - run: npm i
-      - run: npx hardhat compile --config hardhat-ci.config.ts
+          node-version: 18
+          sarif: results.sarif
+          fail-on: none
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: |
-          sudo snap install solc
-          python -m pip install --upgrade pip
-          pip install slither-analyzer==0.9.3 solc-select==1.0.2
-
-      - name: Summary of static ananlysis
-        run: |
-          slither . --print human-summary
-
-      - name: Contract summary of static ananlysis
-        run: |
-          slither . --print contract-summary
-
-      - name: Function summary
-        run: |
-          slither . --print function-summary
-
-      - name: Inheritance
-        run: |
-          slither . --print inheritance
-
-      - name: Data dependency
-        run: |
-          slither . --print data-dependency
+          sarif_file: ${{ steps.slither.outputs.sarif }}
