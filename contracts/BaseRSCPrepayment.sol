@@ -110,7 +110,6 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     /// Emitted when recipients set immutable.
     event ImmutableRecipients(bool isImmutableRecipients);
 
-
     /**
      * @dev Throws if sender is not distributor
      */

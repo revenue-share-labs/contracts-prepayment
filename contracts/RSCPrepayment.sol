@@ -80,7 +80,8 @@ contract RSCPrepayment is BaseRSCPrepayment {
         residualInterestRate = _residualInterestRate;
         investorAmountToReceive =
             _investedAmount +
-            _investedAmount * interestRate / BASIS_POINT;
+            (_investedAmount * interestRate) /
+            BASIS_POINT;
 
         // Recipients settings
         _setRecipients(_recipients);
@@ -91,7 +92,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
      * @param _valueToDistribute Native currency amount to be distribute
      */
     function _redistributeNativeCurrency(uint256 _valueToDistribute) internal override {
-        uint256 fee = _valueToDistribute * platformFee / BASIS_POINT;
+        uint256 fee = (_valueToDistribute * platformFee) / BASIS_POINT;
         _valueToDistribute -= fee;
 
         address payable platformWallet = factory.platformWallet();
@@ -108,8 +109,8 @@ contract RSCPrepayment is BaseRSCPrepayment {
         uint256 amountToDistribute;
         if (investorRemainingAmount == 0) {
             // Investor was already fulfilled and is now receiving residualInterestRate
-            uint256 investorInterest = _valueToDistribute *
-                residualInterestRate / BASIS_POINT;
+            uint256 investorInterest = (_valueToDistribute * residualInterestRate) /
+                BASIS_POINT;
             amountToDistribute = _valueToDistribute - investorInterest;
             (bool success, ) = payable(investor).call{ value: investorInterest }("");
             if (!success) {
@@ -131,8 +132,8 @@ contract RSCPrepayment is BaseRSCPrepayment {
                 return;
             } else {
                 // msg.value is more than investor will receive, so we send him his part and redistribute the rest
-                uint256 investorInterestBonus = (_valueToDistribute -
-                    investorRemainingAmount) * residualInterestRate / BASIS_POINT;
+                uint256 investorInterestBonus = ((_valueToDistribute -
+                    investorRemainingAmount) * residualInterestRate) / BASIS_POINT;
                 investorReceivedAmount += investorRemainingAmount;
                 (bool success, ) = payable(investor).call{
                     value: investorRemainingAmount + investorInterestBonus
@@ -153,7 +154,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
         for (uint256 i = 0; i < recipientsLength; ) {
             address payable recipient = recipients[i];
             uint256 percentage = recipientsPercentage[recipient];
-            uint256 amountToReceive = amountToDistribute * percentage / BASIS_POINT;
+            uint256 amountToReceive = (amountToDistribute * percentage) / BASIS_POINT;
             (bool success, ) = payable(recipient).call{ value: amountToReceive }("");
             if (!success) {
                 revert TransferFailedError();
@@ -174,7 +175,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
 
         // Platform Fee
         if (platformFee > 0) {
-            uint256 fee = contractBalance * platformFee / BASIS_POINT;
+            uint256 fee = (contractBalance * platformFee) / BASIS_POINT;
             contractBalance -= fee;
             address payable platformWallet = factory.platformWallet();
             _token.safeTransfer(platformWallet, fee);
@@ -192,8 +193,8 @@ contract RSCPrepayment is BaseRSCPrepayment {
 
         if (investorRemainingAmount == 0) {
             // Investor was already fulfilled and is now receiving residualInterestRate
-            uint256 investorInterest = contractBalance *
-                residualInterestRate / BASIS_POINT;
+            uint256 investorInterest = (contractBalance * residualInterestRate) /
+                BASIS_POINT;
             amountToDistribute = contractBalance - investorInterest;
             _token.safeTransfer(investor, investorInterest);
             _recursiveERC20Distribution(investor, _token);
@@ -211,8 +212,8 @@ contract RSCPrepayment is BaseRSCPrepayment {
                 return;
             } else {
                 // contractBalance is more than investor will receive, so we send him his part and redistribute the rest
-                uint256 investorInterestBonus = (contractBalance -
-                    investorRemainingAmountToken) * residualInterestRate / BASIS_POINT;
+                uint256 investorInterestBonus = ((contractBalance -
+                    investorRemainingAmountToken) * residualInterestRate) / BASIS_POINT;
                 investorReceivedAmount += investorRemainingAmount;
                 _token.safeTransfer(
                     investor,
@@ -231,7 +232,7 @@ contract RSCPrepayment is BaseRSCPrepayment {
         for (uint256 i = 0; i < recipientsLength; ) {
             address payable recipient = recipients[i];
             uint256 percentage = recipientsPercentage[recipient];
-            uint256 amountToReceive = amountToDistribute * percentage / BASIS_POINT;
+            uint256 amountToReceive = (amountToDistribute * percentage) / BASIS_POINT;
             _token.safeTransfer(recipient, amountToReceive);
             _recursiveERC20Distribution(recipient, _token);
             unchecked {
