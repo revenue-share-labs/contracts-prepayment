@@ -81,7 +81,8 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
         residualInterestRate = _residualInterestRate;
         investorAmountToReceive =
             _investedAmount +
-            ((_investedAmount * interestRate) / BASIS_POINT);
+            (_investedAmount * interestRate) /
+            BASIS_POINT;
 
         // Recipients settings
         _setRecipients(_recipients);
