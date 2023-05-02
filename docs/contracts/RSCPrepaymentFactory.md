@@ -7,32 +7,14 @@ License: MIT
 
 ## Events info
 
-### OwnershipTransferred event
+### NewRSCPrepayment event
 
 ```solidity
-event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-```
-
-### PlatformFeeChanged event
-
-```solidity
-event PlatformFeeChanged(uint256 oldFee, uint256 newFee);
-```
-
-### PlatformWalletChanged event
-
-```solidity
-event PlatformWalletChanged(address oldPlatformWallet, address newPlatformWallet);
-```
-
-### RSCPrepaymentCreated event
-
-```solidity
-event RSCPrepaymentCreated(
+event NewRSCPrepayment(
 	address contractAddress,
 	address controller,
 	address[] distributors,
-	uint256 version,
+	bytes32 version,
 	bool immutableController,
 	bool isAutoNativeCurrencyDistribution,
 	uint256 minAutoDistributeAmount,
@@ -43,14 +25,14 @@ event RSCPrepaymentCreated(
 );
 ```
 
-### RSCPrepaymentUsdCreated event
+### NewRSCPrepaymentUsd event
 
 ```solidity
-event RSCPrepaymentUsdCreated(
+event NewRSCPrepaymentUsd(
 	address contractAddress,
 	address controller,
 	address[] distributors,
-	uint256 version,
+	bytes32 version,
 	bool immutableController,
 	bool isAutoNativeCurrencyDistribution,
 	uint256 minAutoDistributeAmount,
@@ -62,13 +44,25 @@ event RSCPrepaymentUsdCreated(
 );
 ```
 
-## Errors info
-
-### CreationIdAlreadyProcessed error
+### OwnershipTransferred event
 
 ```solidity
-error CreationIdAlreadyProcessed();
+event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 ```
+
+### PlatformFee event
+
+```solidity
+event PlatformFee(uint256 newFee);
+```
+
+### PlatformWallet event
+
+```solidity
+event PlatformWallet(address newPlatformWallet);
+```
+
+## Errors info
 
 ### InvalidFeePercentage error
 
@@ -78,11 +72,32 @@ error InvalidFeePercentage();
 
 ## Functions info
 
+### BASIS_POINT (0xada5f642)
+
+```solidity
+function BASIS_POINT() external view returns (uint256);
+```
+
+
+Measurement unit 10000000 = 100%.
+
+### VERSION (0xffa1ad74)
+
+```solidity
+function VERSION() external view returns (bytes32);
+```
+
+
+RSCPrepaymentFactory contract version.
+
 ### contractImplementation (0x9e72370b)
 
 ```solidity
 function contractImplementation() external view returns (address);
 ```
+
+
+RSCPrepayment implementation address.
 
 ### contractImplementationUsd (0x706310d8)
 
@@ -90,7 +105,10 @@ function contractImplementation() external view returns (address);
 function contractImplementationUsd() external view returns (address);
 ```
 
-### createRSCPrepayment (0x9fa56e14)
+
+RSCPrepaymentUSD implementation address.
+
+### createRSCPrepayment (0x73465367)
 
 ```solidity
 function createRSCPrepayment(tuple _data) external returns (address);
@@ -113,10 +131,13 @@ Return values:
 | :--- | :------ | :---------------------- |
 | _0   | address | Address of new contract |
 
-### createRSCPrepaymentUsd (0xc0fffb71)
+### createRSCPrepaymentUsd (0x03087ac7)
 
 ```solidity
-function createRSCPrepaymentUsd(tuple _data) external returns (address);
+function createRSCPrepaymentUsd(
+	tuple _data,
+	address nativeTokenUsdPriceFeed
+) external returns (address);
 ```
 
 
@@ -151,17 +172,37 @@ Returns the address of the current owner.
 function platformFee() external view returns (uint256);
 ```
 
+
+Current platform fee.
+
 ### platformWallet (0xfa2af9da)
 
 ```solidity
 function platformWallet() external view returns (address);
 ```
 
-### processedCreationIds (0x194a2e3b)
+
+Fee receiver address.
+
+### predictDeterministicAddress (0xc93ad81e)
 
 ```solidity
-function processedCreationIds(bytes32) external view returns (bool);
+function predictDeterministicAddress(
+	tuple _data,
+	address _deployer
+) external view returns (address);
 ```
+
+
+External function for creating clone proxy pointing to RSC Percentage.
+
+
+Parameters:
+
+| Name      | Type    | Description                                               |
+| :-------- | :------ | :-------------------------------------------------------- |
+| _data     | tuple   | RSC Create data used for hashing and getting random salt. |
+| _deployer | address | Wallet address that want to create new RSC contract.      |
 
 ### renounceOwnership (0x715018a6)
 
@@ -184,9 +225,9 @@ Only Owner function for setting platform fee
 
 Parameters:
 
-| Name | Type    | Description                                     |
-| :--- | :------ | :---------------------------------------------- |
-| _fee | uint256 | Percentage define platform fee 100% == 10000000 |
+| Name | Type    | Description                                        |
+| :--- | :------ | :------------------------------------------------- |
+| _fee | uint256 | Percentage define platform fee 100% == BASIS_POINT |
 
 ### setPlatformWallet (0x8831e9cf)
 

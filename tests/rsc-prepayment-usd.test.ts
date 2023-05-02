@@ -4,20 +4,14 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import {
   RSCPrepaymentUsd,
-  RSCPrepaymentUsd__factory,
-  RSCPrepaymentFactory,
-  RSCPrepaymentFactory__factory,
   TestToken,
   TestToken__factory,
-  MockReceiver,
-  MockReceiver__factory,
 } from "../typechain-types";
 import { snapshot } from "./utils";
 
 describe("RSC Prepayment USD tests", function () {
-  let rscPrepaymentUsdContract: RSCPrepaymentUsd,
+  let rscPrepaymentUsd: RSCPrepaymentUsd,
     testToken: TestToken,
-    mockReceiver: MockReceiver,
     owner: SignerWithAddress,
     alice: SignerWithAddress,
     bob: SignerWithAddress,
@@ -30,15 +24,14 @@ describe("RSC Prepayment USD tests", function () {
   async function deployRSCPrepaymentUsd(
     controller: any,
     distributors: any,
-    immutableController: any,
+    isImmutableController: any,
     isAutoNativeCurrencyDistribution: any,
     minAutoDistributeAmount: any,
     investor: any,
     investedAmount: any,
     interestRate: any,
     residualInterestRate: any,
-    initialRecipients: any,
-    percentages: any,
+    recipients: any,
     supportedErc20addresses: any,
     creationId: any
   ) {
@@ -52,33 +45,34 @@ describe("RSC Prepayment USD tests", function () {
     );
     const usdPriceFeedMock = await UsdPriceFeedMock.deploy();
 
-    const tx = await rscPrepaymentUsdFactory.createRSCPrepaymentUsd({
-      controller: controller,
-      distributors: distributors,
-      immutableController: immutableController,
-      isAutoNativeCurrencyDistribution: isAutoNativeCurrencyDistribution,
-      minAutoDistributeAmount: minAutoDistributeAmount,
-      investor: investor,
-      investedAmount: investedAmount,
-      interestRate: interestRate,
-      residualInterestRate: residualInterestRate,
-      nativeTokenUsdPriceFeed: usdPriceFeedMock.address,
-      initialRecipients: initialRecipients,
-      percentages: percentages,
-      supportedErc20addresses: supportedErc20addresses,
-      erc20PriceFeeds: [usdPriceFeedMock.address],
-      creationId: creationId,
-    });
+    const tx = await rscPrepaymentUsdFactory.createRSCPrepaymentUsd(
+      {
+        controller,
+        distributors,
+        isImmutableController,
+        isAutoNativeCurrencyDistribution,
+        minAutoDistributeAmount,
+        investor,
+        investedAmount,
+        interestRate,
+        residualInterestRate,
+        recipients,
+        supportedErc20addresses,
+        erc20PriceFeeds: [usdPriceFeedMock.address],
+        creationId,
+      },
+      usdPriceFeedMock.address
+    );
     let receipt = await tx.wait();
-    const rscPrepaymentUsdContractAddress = receipt.events?.[4].args?.[0];
+    const rscPrepaymentUsdAddress = receipt.events?.[4].args?.[0];
 
     const RSCPrepaymentUsdContract = await ethers.getContractFactory(
       "RSCPrepaymentUsd"
     );
-    const rscPrepaymentUsdContract = await RSCPrepaymentUsdContract.attach(
-      rscPrepaymentUsdContractAddress
+    const rscPrepaymentUsd = await RSCPrepaymentUsdContract.attach(
+      rscPrepaymentUsdAddress
     );
-    return rscPrepaymentUsdContract;
+    return rscPrepaymentUsd;
   }
 
   before(async () => {
@@ -89,7 +83,7 @@ describe("RSC Prepayment USD tests", function () {
       "TTT",
       10000000000
     );
-    rscPrepaymentUsdContract = await deployRSCPrepaymentUsd(
+    rscPrepaymentUsd = await deployRSCPrepaymentUsd(
       owner.address,
       [owner.address],
       false,
@@ -99,8 +93,7 @@ describe("RSC Prepayment USD tests", function () {
       ethers.utils.parseEther("100000"),
       BigInt(3000000),
       BigInt(500000),
-      [alice.address],
-      [10000000],
+      [{ addrs: alice.address, percentage: 10000000 }],
       [testToken.address],
       ethers.constants.HashZero
     );
@@ -115,111 +108,89 @@ describe("RSC Prepayment USD tests", function () {
   });
 
   it("Should set base attrs correctly", async () => {
-    expect(await rscPrepaymentUsdContract.owner()).to.be.equal(owner.address);
-    expect(await rscPrepaymentUsdContract.distributors(owner.address)).to.be
-      .true;
-    expect(await rscPrepaymentUsdContract.investor()).to.be.equal(
-      investor.address
-    );
-    expect(await rscPrepaymentUsdContract.investedAmount()).to.be.equal(
+    expect(await rscPrepaymentUsd.owner()).to.be.equal(owner.address);
+    expect(await rscPrepaymentUsd.distributors(owner.address)).to.be.true;
+    expect(await rscPrepaymentUsd.investor()).to.be.equal(investor.address);
+    expect(await rscPrepaymentUsd.investedAmount()).to.be.equal(
       ethers.utils.parseEther("100000")
     );
-    expect(
-      await rscPrepaymentUsdContract.investorAmountToReceive()
-    ).to.be.equal(ethers.utils.parseEther("130000"));
-    expect(await rscPrepaymentUsdContract.controller()).to.be.equal(
-      owner.address
+    expect(await rscPrepaymentUsd.investorAmountToReceive()).to.be.equal(
+      ethers.utils.parseEther("130000")
     );
-    expect(await rscPrepaymentUsdContract.platformFee()).to.be.equal(0);
+    expect(await rscPrepaymentUsd.controller()).to.be.equal(owner.address);
+    expect(await rscPrepaymentUsd.platformFee()).to.be.equal(0);
   });
 
   it("Should set recipients correctly", async () => {
     await expect(
-      rscPrepaymentUsdContract
-        .connect(addr3)
-        .setRecipients(
-          [alice.address, addr3.address, addr4.address],
-          [2000000, 5000000, 3000000]
-        )
-    ).to.be.revertedWithCustomError(
-      rscPrepaymentUsdContract,
-      "OnlyControllerError"
-    );
+      rscPrepaymentUsd.connect(addr3).setRecipients([
+        { addrs: alice.address, percentage: 2000000 },
+        { addrs: addr3.address, percentage: 5000000 },
+        { addrs: addr4.address, percentage: 3000000 },
+      ])
+    ).to.be.revertedWithCustomError(rscPrepaymentUsd, "OnlyControllerError");
 
-    await rscPrepaymentUsdContract.setRecipients(
-      [alice.address, addr3.address, addr4.address],
-      [2000000, 5000000, 3000000]
-    );
+    await rscPrepaymentUsd.setRecipients([
+      { addrs: alice.address, percentage: 2000000 },
+      { addrs: addr3.address, percentage: 5000000 },
+      { addrs: addr4.address, percentage: 3000000 },
+    ]);
 
-    expect(await rscPrepaymentUsdContract.recipients(0)).to.be.equal(
-      alice.address
-    );
-    expect(await rscPrepaymentUsdContract.recipients(1)).to.be.equal(
-      addr3.address
-    );
-    expect(await rscPrepaymentUsdContract.recipients(2)).to.be.equal(
-      addr4.address
-    );
+    expect(await rscPrepaymentUsd.recipients(0)).to.be.equal(alice.address);
+    expect(await rscPrepaymentUsd.recipients(1)).to.be.equal(addr3.address);
+    expect(await rscPrepaymentUsd.recipients(2)).to.be.equal(addr4.address);
     expect(
-      await rscPrepaymentUsdContract.recipientsPercentage(alice.address)
+      await rscPrepaymentUsd.recipientsPercentage(alice.address)
     ).to.be.equal(2000000);
     expect(
-      await rscPrepaymentUsdContract.recipientsPercentage(addr3.address)
+      await rscPrepaymentUsd.recipientsPercentage(addr3.address)
     ).to.be.equal(5000000);
     expect(
-      await rscPrepaymentUsdContract.recipientsPercentage(addr4.address)
+      await rscPrepaymentUsd.recipientsPercentage(addr4.address)
     ).to.be.equal(3000000);
-    expect(await rscPrepaymentUsdContract.numberOfRecipients()).to.be.equal(3);
+    expect(await rscPrepaymentUsd.numberOfRecipients()).to.be.equal(3);
 
     await expect(
-      rscPrepaymentUsdContract.setRecipients(
-        [alice.address, addr3.address, addr4.address],
-        [2000000, 5000000, 2000000]
-      )
-    ).to.be.revertedWithCustomError(
-      rscPrepaymentUsdContract,
-      "InvalidPercentageError"
-    );
+      rscPrepaymentUsd.setRecipients([
+        { addrs: alice.address, percentage: 2000000 },
+        { addrs: addr3.address, percentage: 5000000 },
+        { addrs: addr4.address, percentage: 2000000 },
+      ])
+    ).to.be.revertedWithCustomError(rscPrepaymentUsd, "InvalidPercentageError");
 
-    await rscPrepaymentUsdContract.setRecipients(
-      [investor.address, addr4.address, addr3.address, alice.address],
-      [2000000, 2000000, 3000000, 3000000]
-    );
+    await rscPrepaymentUsd.setRecipients([
+      { addrs: investor.address, percentage: 2000000 },
+      { addrs: addr4.address, percentage: 2000000 },
+      { addrs: addr3.address, percentage: 3000000 },
+      { addrs: alice.address, percentage: 3000000 },
+    ]);
 
-    expect(await rscPrepaymentUsdContract.recipients(0)).to.be.equal(
-      investor.address
-    );
-    expect(await rscPrepaymentUsdContract.recipients(1)).to.be.equal(
-      addr4.address
-    );
-    expect(await rscPrepaymentUsdContract.recipients(2)).to.be.equal(
-      addr3.address
-    );
-    expect(await rscPrepaymentUsdContract.recipients(3)).to.be.equal(
-      alice.address
-    );
+    expect(await rscPrepaymentUsd.recipients(0)).to.be.equal(investor.address);
+    expect(await rscPrepaymentUsd.recipients(1)).to.be.equal(addr4.address);
+    expect(await rscPrepaymentUsd.recipients(2)).to.be.equal(addr3.address);
+    expect(await rscPrepaymentUsd.recipients(3)).to.be.equal(alice.address);
     expect(
-      await rscPrepaymentUsdContract.recipientsPercentage(investor.address)
+      await rscPrepaymentUsd.recipientsPercentage(investor.address)
     ).to.be.equal(2000000);
     expect(
-      await rscPrepaymentUsdContract.recipientsPercentage(addr4.address)
+      await rscPrepaymentUsd.recipientsPercentage(addr4.address)
     ).to.be.equal(2000000);
     expect(
-      await rscPrepaymentUsdContract.recipientsPercentage(addr3.address)
+      await rscPrepaymentUsd.recipientsPercentage(addr3.address)
     ).to.be.equal(3000000);
     expect(
-      await rscPrepaymentUsdContract.recipientsPercentage(alice.address)
+      await rscPrepaymentUsd.recipientsPercentage(alice.address)
     ).to.be.equal(3000000);
-    expect(await rscPrepaymentUsdContract.numberOfRecipients()).to.be.equal(4);
+    expect(await rscPrepaymentUsd.numberOfRecipients()).to.be.equal(4);
   });
 
   it("Should redistribute eth correctly", async () => {
-    await rscPrepaymentUsdContract.setRecipients(
-      [alice.address, bob.address],
-      [8000000, 2000000]
-    );
+    await rscPrepaymentUsd.setRecipients([
+      { addrs: alice.address, percentage: 8000000 },
+      { addrs: bob.address, percentage: 2000000 },
+    ]);
 
-    expect(await rscPrepaymentUsdContract.numberOfRecipients()).to.be.equal(2);
+    expect(await rscPrepaymentUsd.numberOfRecipients()).to.be.equal(2);
 
     let aliceBalanceBefore = (
       await ethers.provider.getBalance(alice.address)
@@ -231,8 +202,8 @@ describe("RSC Prepayment USD tests", function () {
       await ethers.provider.getBalance(investor.address)
     ).toBigInt();
 
-    let transactionHash = await owner.sendTransaction({
-      to: rscPrepaymentUsdContract.address,
+    await owner.sendTransaction({
+      to: rscPrepaymentUsd.address,
       value: ethers.utils.parseEther("50"),
     });
 
@@ -251,8 +222,8 @@ describe("RSC Prepayment USD tests", function () {
     expect(investorBalanceAfter).to.be.equal(
       investorBalanceBefore + ethers.utils.parseEther("50").toBigInt()
     );
-    let transactionHash2 = await owner.sendTransaction({
-      to: rscPrepaymentUsdContract.address,
+    await owner.sendTransaction({
+      to: rscPrepaymentUsd.address,
       value: ethers.utils.parseEther("50"),
     });
 
@@ -272,8 +243,8 @@ describe("RSC Prepayment USD tests", function () {
       investorBalanceAfter + ethers.utils.parseEther("50").toBigInt()
     );
 
-    let transactionHash3 = await owner.sendTransaction({
-      to: rscPrepaymentUsdContract.address,
+    await owner.sendTransaction({
+      to: rscPrepaymentUsd.address,
       value: ethers.utils.parseEther("50"),
     });
 
@@ -297,8 +268,8 @@ describe("RSC Prepayment USD tests", function () {
       investorBalanceAfter2 + ethers.utils.parseEther("31").toBigInt()
     );
 
-    let transactionHash4 = await owner.sendTransaction({
-      to: rscPrepaymentUsdContract.address,
+    await owner.sendTransaction({
+      to: rscPrepaymentUsd.address,
       value: ethers.utils.parseEther("50"),
     });
 
@@ -325,19 +296,17 @@ describe("RSC Prepayment USD tests", function () {
 
   it("Should redistribute ERC20 token", async () => {
     await testToken.transfer(
-      rscPrepaymentUsdContract.address,
+      rscPrepaymentUsd.address,
       ethers.utils.parseEther("130")
     );
 
-    await rscPrepaymentUsdContract.setRecipients(
-      [alice.address, bob.address],
-      [2000000, 8000000]
-    );
+    await rscPrepaymentUsd.setRecipients([
+      { addrs: alice.address, percentage: 2000000 },
+      { addrs: bob.address, percentage: 8000000 },
+    ]);
 
-    await rscPrepaymentUsdContract.redistributeToken(testToken.address);
-    expect(
-      await testToken.balanceOf(rscPrepaymentUsdContract.address)
-    ).to.be.equal(0);
+    await rscPrepaymentUsd.redistributeToken(testToken.address);
+    expect(await testToken.balanceOf(rscPrepaymentUsd.address)).to.be.equal(0);
     expect(await testToken.balanceOf(alice.address)).to.be.equal(
       ethers.utils.parseEther("0")
     );
@@ -349,33 +318,22 @@ describe("RSC Prepayment USD tests", function () {
     );
 
     await testToken.transfer(
-      rscPrepaymentUsdContract.address,
+      rscPrepaymentUsd.address,
       ethers.utils.parseEther("100")
     );
 
     await expect(
-      rscPrepaymentUsdContract
-        .connect(addr3)
-        .redistributeToken(testToken.address)
-    ).to.be.revertedWithCustomError(
-      rscPrepaymentUsdContract,
-      "OnlyDistributorError"
-    );
+      rscPrepaymentUsd.connect(addr3).redistributeToken(testToken.address)
+    ).to.be.revertedWithCustomError(rscPrepaymentUsd, "OnlyDistributorError");
 
     await expect(
-      rscPrepaymentUsdContract
-        .connect(addr3)
-        .setDistributor(addr3.address, true)
+      rscPrepaymentUsd.connect(addr3).setDistributor(addr3.address, true)
     ).to.be.revertedWith("Ownable: caller is not the owner");
 
-    await rscPrepaymentUsdContract.setDistributor(addr3.address, true);
-    await rscPrepaymentUsdContract
-      .connect(addr3)
-      .redistributeToken(testToken.address);
+    await rscPrepaymentUsd.setDistributor(addr3.address, true);
+    await rscPrepaymentUsd.connect(addr3).redistributeToken(testToken.address);
 
-    expect(
-      await testToken.balanceOf(rscPrepaymentUsdContract.address)
-    ).to.be.equal(0);
+    expect(await testToken.balanceOf(rscPrepaymentUsd.address)).to.be.equal(0);
     expect(await testToken.balanceOf(alice.address)).to.be.equal(
       ethers.utils.parseEther("19")
     );
@@ -386,32 +344,30 @@ describe("RSC Prepayment USD tests", function () {
       ethers.utils.parseEther("135")
     );
 
-    await rscPrepaymentUsdContract.setTokenUsdPriceFeed(
+    await rscPrepaymentUsd.setTokenUsdPriceFeed(
       testToken.address,
       ethers.constants.AddressZero
     );
     await testToken.transfer(
-      rscPrepaymentUsdContract.address,
+      rscPrepaymentUsd.address,
       ethers.utils.parseEther("100")
     );
     await expect(
-      rscPrepaymentUsdContract
-        .connect(addr3)
-        .redistributeToken(testToken.address)
+      rscPrepaymentUsd.connect(addr3).redistributeToken(testToken.address)
     ).to.be.revertedWithCustomError(
-      rscPrepaymentUsdContract,
+      rscPrepaymentUsd,
       "TokenMissingUsdPriceOracle"
     );
   });
 
   it("Should initialize only once", async () => {
     await expect(
-      rscPrepaymentUsdContract.initialize(
+      rscPrepaymentUsd.initialize(
         {
           owner: bob.address,
           controller: bob.address,
           _distributors: [bob.address],
-          immutableController: true,
+          isImmutableController: true,
           isAutoNativeCurrencyDistribution: false,
           minAutoDistributionAmount: ethers.utils.parseEther("1"),
           platformFee: BigInt(0),
@@ -424,15 +380,14 @@ describe("RSC Prepayment USD tests", function () {
         BigInt(10),
         BigInt(5),
         addr3.address,
-        [alice.address],
-        [10000000]
+        [{ addrs: alice.address, percentage: 10000000 }]
       )
     ).to.be.revertedWith("Initializable: contract is already initialized");
   });
 
   it("Should transfer ownership correctly", async () => {
-    await rscPrepaymentUsdContract.transferOwnership(alice.address);
-    expect(await rscPrepaymentUsdContract.owner()).to.be.equal(alice.address);
+    await rscPrepaymentUsd.transferOwnership(alice.address);
+    expect(await rscPrepaymentUsd.owner()).to.be.equal(alice.address);
   });
 
   it("Should deploy and create immutable contract", async () => {
@@ -446,17 +401,16 @@ describe("RSC Prepayment USD tests", function () {
       ethers.utils.parseEther("100"),
       BigInt(3000000),
       BigInt(500000),
-      [alice.address],
-      [10000000],
+      [{ addrs: alice.address, percentage: 10000000 }],
       [testToken.address],
       ethers.constants.HashZero
     );
 
     await expect(
-      rscUsdPrepaymentImmutableContract.setRecipients(
-        [alice.address, bob.address],
-        [2000000, 8000000]
-      )
+      rscUsdPrepaymentImmutableContract.setRecipients([
+        { addrs: alice.address, percentage: 2000000 },
+        { addrs: bob.address, percentage: 8000000 },
+      ])
     ).to.be.revertedWithCustomError(
       rscUsdPrepaymentImmutableContract,
       "OnlyControllerError"
@@ -465,12 +419,6 @@ describe("RSC Prepayment USD tests", function () {
     await expect(
       rscUsdPrepaymentImmutableContract.connect(bob).setController(bob.address)
     ).to.be.revertedWith("Ownable: caller is not the owner");
-    await expect(
-      rscUsdPrepaymentImmutableContract.setController(alice.address)
-    ).to.be.revertedWithCustomError(
-      rscUsdPrepaymentImmutableContract,
-      "ImmutableControllerError"
-    );
   });
 
   it("Should create manual distribution split", async () => {
@@ -484,8 +432,7 @@ describe("RSC Prepayment USD tests", function () {
       ethers.utils.parseEther("100000"),
       BigInt(3000000),
       BigInt(500000),
-      [alice.address],
-      [10000000],
+      [{ addrs: alice.address, percentage: 10000000 }],
       [testToken.address],
       ethers.constants.HashZero
     );
@@ -569,23 +516,24 @@ describe("RSC Prepayment USD tests", function () {
       BigInt(5000000)
     );
 
-    const txFee = await rscPrepaymentFeeFactory.createRSCPrepaymentUsd({
-      controller: owner.address,
-      distributors: [owner.address],
-      immutableController: false,
-      isAutoNativeCurrencyDistribution: true,
-      minAutoDistributeAmount: ethers.utils.parseEther("1"),
-      investor: investor.address,
-      investedAmount: ethers.utils.parseEther("100000"),
-      interestRate: BigInt("3000"),
-      residualInterestRate: BigInt("500"),
-      nativeTokenUsdPriceFeed: usdPriceFeedMock.address,
-      initialRecipients: [alice.address],
-      percentages: [10000000],
-      supportedErc20addresses: [testToken.address],
-      erc20PriceFeeds: [usdPriceFeedMock.address],
-      creationId: ethers.constants.HashZero,
-    });
+    const txFee = await rscPrepaymentFeeFactory.createRSCPrepaymentUsd(
+      {
+        controller: owner.address,
+        distributors: [owner.address],
+        isImmutableController: false,
+        isAutoNativeCurrencyDistribution: true,
+        minAutoDistributeAmount: ethers.utils.parseEther("1"),
+        investor: investor.address,
+        investedAmount: ethers.utils.parseEther("100000"),
+        interestRate: BigInt("3000"),
+        residualInterestRate: BigInt("500"),
+        recipients: [{ addrs: alice.address, percentage: 10000000 }],
+        supportedErc20addresses: [testToken.address],
+        erc20PriceFeeds: [usdPriceFeedMock.address],
+        creationId: ethers.constants.HashZero,
+      },
+      usdPriceFeedMock.address
+    );
 
     let receipt = await txFee.wait();
     const revenueShareContractAddress = receipt.events?.[4].args?.[0];
@@ -603,7 +551,7 @@ describe("RSC Prepayment USD tests", function () {
       await ethers.provider.getBalance(investor.address)
     ).toBigInt();
 
-    const transactionHash = await owner.sendTransaction({
+    await owner.sendTransaction({
       to: RSCFeePrepaymentUsd.address,
       value: ethers.utils.parseEther("50"),
     });
@@ -646,14 +594,12 @@ describe("RSC Prepayment USD tests", function () {
     await usdPriceFeedMock.deployed();
 
     await expect(
-      rscPrepaymentUsdContract
+      rscPrepaymentUsd
         .connect(bob)
         .setNativeTokenPriceFeed(usdPriceFeedMock.address)
     ).to.be.revertedWith("Ownable: caller is not the owner");
 
-    await rscPrepaymentUsdContract.setNativeTokenPriceFeed(
-      usdPriceFeedMock.address
-    );
+    await rscPrepaymentUsd.setNativeTokenPriceFeed(usdPriceFeedMock.address);
   });
 
   it("Should work with creation ID correctly", async () => {
@@ -670,64 +616,43 @@ describe("RSC Prepayment USD tests", function () {
     const usdPriceFeedMock = await UsdPriceFeedMock.deploy();
     await usdPriceFeedMock.deployed();
 
-    await rscPrepaymentCreationIdFactory.createRSCPrepaymentUsd({
-      controller: owner.address,
-      distributors: [owner.address],
-      immutableController: false,
-      isAutoNativeCurrencyDistribution: true,
-      minAutoDistributeAmount: ethers.utils.parseEther("1"),
-      investor: investor.address,
-      investedAmount: ethers.utils.parseEther("100000"),
-      interestRate: BigInt("3000"),
-      residualInterestRate: BigInt("500"),
-      nativeTokenUsdPriceFeed: usdPriceFeedMock.address,
-      initialRecipients: [alice.address],
-      percentages: [10000000],
-      supportedErc20addresses: [testToken.address],
-      erc20PriceFeeds: [usdPriceFeedMock.address],
-      creationId: ethers.utils.formatBytes32String("test-creation-id-1"),
-    });
-
-    await expect(
-      rscPrepaymentCreationIdFactory.createRSCPrepaymentUsd({
+    await rscPrepaymentCreationIdFactory.createRSCPrepaymentUsd(
+      {
         controller: owner.address,
         distributors: [owner.address],
-        immutableController: false,
+        isImmutableController: false,
         isAutoNativeCurrencyDistribution: true,
         minAutoDistributeAmount: ethers.utils.parseEther("1"),
         investor: investor.address,
         investedAmount: ethers.utils.parseEther("100000"),
         interestRate: BigInt("3000"),
         residualInterestRate: BigInt("500"),
-        nativeTokenUsdPriceFeed: usdPriceFeedMock.address,
-        initialRecipients: [alice.address],
-        percentages: [10000000],
+        recipients: [{ addrs: alice.address, percentage: 10000000 }],
         supportedErc20addresses: [testToken.address],
         erc20PriceFeeds: [usdPriceFeedMock.address],
         creationId: ethers.utils.formatBytes32String("test-creation-id-1"),
-      })
-    ).to.be.revertedWithCustomError(
-      RSCPrepaymentCreationIdFactory,
-      "CreationIdAlreadyProcessed"
+      },
+      usdPriceFeedMock.address
     );
 
-    await rscPrepaymentCreationIdFactory.createRSCPrepaymentUsd({
-      controller: owner.address,
-      distributors: [owner.address],
-      immutableController: false,
-      isAutoNativeCurrencyDistribution: true,
-      minAutoDistributeAmount: ethers.utils.parseEther("1"),
-      investor: investor.address,
-      investedAmount: ethers.utils.parseEther("100000"),
-      interestRate: BigInt("3000"),
-      residualInterestRate: BigInt("500"),
-      nativeTokenUsdPriceFeed: usdPriceFeedMock.address,
-      initialRecipients: [alice.address],
-      percentages: [10000000],
-      supportedErc20addresses: [testToken.address],
-      erc20PriceFeeds: [usdPriceFeedMock.address],
-      creationId: ethers.utils.formatBytes32String("test-creation-id-2"),
-    });
+    await rscPrepaymentCreationIdFactory.createRSCPrepaymentUsd(
+      {
+        controller: owner.address,
+        distributors: [owner.address],
+        isImmutableController: false,
+        isAutoNativeCurrencyDistribution: true,
+        minAutoDistributeAmount: ethers.utils.parseEther("1"),
+        investor: investor.address,
+        investedAmount: ethers.utils.parseEther("100000"),
+        interestRate: BigInt("3000"),
+        residualInterestRate: BigInt("500"),
+        recipients: [{ addrs: alice.address, percentage: 10000000 }],
+        supportedErc20addresses: [testToken.address],
+        erc20PriceFeeds: [usdPriceFeedMock.address],
+        creationId: ethers.utils.formatBytes32String("test-creation-id-2"),
+      },
+      usdPriceFeedMock.address
+    );
   });
 
   it("Should recursively erc20 split recipient", async () => {
@@ -741,14 +666,13 @@ describe("RSC Prepayment USD tests", function () {
       ethers.utils.parseEther("10000"),
       BigInt(3000),
       BigInt(500),
-      [rscPrepaymentUsdContract.address],
-      [10000000],
+      [{ addrs: rscPrepaymentUsd.address, percentage: 10000000 }],
       [testToken.address],
       ethers.constants.HashZero
     );
 
     await testToken.transfer(
-      rscPrepaymentUsdContract.address,
+      rscPrepaymentUsd.address,
       ethers.utils.parseEther("1000000")
     );
     await testToken.transfer(
@@ -756,18 +680,13 @@ describe("RSC Prepayment USD tests", function () {
       ethers.utils.parseEther("1000000")
     );
 
-    await rscPrepaymentUsdContract.setDistributor(
-      rscPrepaymentUsdMain.address,
-      true
-    );
+    await rscPrepaymentUsd.setDistributor(rscPrepaymentUsdMain.address, true);
     await rscPrepaymentUsdMain.redistributeToken(testToken.address);
 
     expect(await testToken.balanceOf(rscPrepaymentUsdMain.address)).to.be.equal(
       0
     );
-    expect(
-      await testToken.balanceOf(rscPrepaymentUsdContract.address)
-    ).to.be.equal(0);
+    expect(await testToken.balanceOf(rscPrepaymentUsd.address)).to.be.equal(0);
   });
 
   it("Should recursively erc20 split investor", async () => {
@@ -777,18 +696,17 @@ describe("RSC Prepayment USD tests", function () {
       false,
       false,
       ethers.utils.parseEther("1"),
-      rscPrepaymentUsdContract.address,
+      rscPrepaymentUsd.address,
       ethers.utils.parseEther("10000"),
       BigInt(3000000),
       BigInt(500000),
-      [alice.address],
-      [10000000],
+      [{ addrs: alice.address, percentage: 10000000 }],
       [testToken.address],
       ethers.constants.HashZero
     );
 
     await testToken.transfer(
-      rscPrepaymentUsdContract.address,
+      rscPrepaymentUsd.address,
       ethers.utils.parseEther("1000000")
     );
     await testToken.transfer(
@@ -796,16 +714,11 @@ describe("RSC Prepayment USD tests", function () {
       ethers.utils.parseEther("1000000")
     );
 
-    await rscPrepaymentUsdContract.setDistributor(
-      rscPrepaymentMain.address,
-      true
-    );
+    await rscPrepaymentUsd.setDistributor(rscPrepaymentMain.address, true);
     await rscPrepaymentMain.redistributeToken(testToken.address);
 
     expect(await testToken.balanceOf(rscPrepaymentMain.address)).to.be.equal(0);
-    expect(
-      await testToken.balanceOf(rscPrepaymentUsdContract.address)
-    ).to.be.equal(0);
+    expect(await testToken.balanceOf(rscPrepaymentUsd.address)).to.be.equal(0);
   });
 
   it("Should recursively split ETH", async () => {
@@ -819,8 +732,7 @@ describe("RSC Prepayment USD tests", function () {
       ethers.utils.parseEther("10000"),
       BigInt(3000000),
       BigInt(500000),
-      [alice.address],
-      [10000000],
+      [{ addrs: alice.address, percentage: 10000000 }],
       [testToken.address],
       ethers.constants.HashZero
     );
@@ -835,8 +747,7 @@ describe("RSC Prepayment USD tests", function () {
       ethers.utils.parseEther("10000"),
       BigInt(3000000),
       BigInt(500000),
-      [rscPrepaymentUsdSecond.address],
-      [10000000],
+      [{ addrs: rscPrepaymentUsdSecond.address, percentage: 10000000 }],
       [testToken.address],
       ethers.constants.HashZero
     );
