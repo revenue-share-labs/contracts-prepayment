@@ -163,25 +163,6 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
     }
 
     /**
-     * @notice Internal function to check whether percentages are equal to 100%
-     * @return valid boolean indicating whether sum of percentage == 100%
-     */
-    function _percentageIsValid() internal view returns (bool valid) {
-        uint256 recipientsLength = recipients.length;
-        uint256 percentageSum;
-
-        for (uint256 i = 0; i < recipientsLength; ) {
-            address recipient = recipients[i];
-            percentageSum += recipientsPercentage[recipient];
-            unchecked {
-                i++;
-            }
-        }
-
-        return percentageSum == BASIS_POINT;
-    }
-
-    /**
      * @notice Internal function for adding recipient to revenue share
      * @param _recipient Recipient address
      * @param _percentage Recipient percentage
