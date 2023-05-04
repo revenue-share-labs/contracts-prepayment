@@ -77,6 +77,12 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         uint256 percentage;
     }
 
+    /// Contains recipient address and their percentage in rev share.
+    struct TokenData {
+        IERC20 tokenAddress;
+        address tokenPriceFeed;
+    }
+
     struct InitContractSetting {
         address owner;
         address[] _distributors;
@@ -85,8 +91,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         bool isAutoNativeCurrencyDistribution;
         uint256 minAutoDistributionAmount;
         uint256 platformFee;
-        IERC20[] supportedErc20addresses;
-        address[] erc20PriceFeeds;
+        TokenData[] tokens;
     }
 
     /// Emitted when recipients and their percentages are set.

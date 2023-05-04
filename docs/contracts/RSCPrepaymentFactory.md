@@ -67,7 +67,7 @@ event PlatformWallet(address newPlatformWallet);
 ### InvalidFeePercentage error
 
 ```solidity
-error InvalidFeePercentage();
+error InvalidFeePercentage(uint256);
 ```
 
 ## Functions info
@@ -108,10 +108,10 @@ function contractImplementationUsd() external view returns (address);
 
 RSCPrepaymentUSD implementation address.
 
-### createRSCPrepayment (0x73465367)
+### createRSCPrepayment (0xaa137bf3)
 
 ```solidity
-function createRSCPrepayment(tuple _data) external returns (address);
+function createRSCPrepayment(tuple _data, bytes32 creationId) external returns (address);
 ```
 
 
@@ -131,12 +131,13 @@ Return values:
 | :--- | :------ | :---------------------- |
 | _0   | address | Address of new contract |
 
-### createRSCPrepaymentUsd (0x03087ac7)
+### createRSCPrepaymentUsd (0x67cfdad0)
 
 ```solidity
 function createRSCPrepaymentUsd(
 	tuple _data,
-	address nativeTokenUsdPriceFeed
+	address nativeTokenUsdPriceFeed,
+	bytes32 creationId
 ) external returns (address);
 ```
 
@@ -184,7 +185,7 @@ function platformWallet() external view returns (address);
 
 Fee receiver address.
 
-### predictDeterministicAddress (0xc93ad81e)
+### predictDeterministicAddress (0xb2319b4d)
 
 ```solidity
 function predictDeterministicAddress(
