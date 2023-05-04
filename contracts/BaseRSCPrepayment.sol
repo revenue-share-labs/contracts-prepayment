@@ -77,7 +77,7 @@ abstract contract BaseRSCPrepayment is OwnableUpgradeable {
         uint256 percentage;
     }
 
-    /// Contains recipient address and their percentage in rev share.
+    /// Contains erc20 token address and their price feed address.
     struct TokenData {
         IERC20 tokenAddress;
         address tokenPriceFeed;
