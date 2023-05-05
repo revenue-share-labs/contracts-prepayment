@@ -80,7 +80,8 @@ contract RSCPrepaymentFactory is Ownable {
 
     event PlatformWallet(address payable newPlatformWallet);
 
-    constructor() {
+    constructor(address owner) {
+        transferOwnership(owner);
         contractImplementation = new RSCPrepayment();
         contractImplementationUsd = new RSCPrepaymentUsd();
     }
