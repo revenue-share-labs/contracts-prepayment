@@ -18,7 +18,7 @@ describe("RSCPrepaymentFactory", () => {
     [owner, alice] = await ethers.getSigners();
     rscPrepaymentFactory = await new RSCPrepaymentFactory__factory(
       owner
-    ).deploy();
+    ).deploy(owner.address);
   });
 
   beforeEach(async () => {

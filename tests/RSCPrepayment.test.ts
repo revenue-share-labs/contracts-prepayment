@@ -84,7 +84,7 @@ describe(" RSC Prepayment tests", function () {
     ethPriceFeedMock = await new EthPriceFeedMock__factory(owner).deploy();
     rscPrepaymentFactory = await new RSCPrepaymentFactory__factory(
       owner
-    ).deploy();
+    ).deploy(owner.address);
     rscPrepayment = await deployRSCPrepayment(
       owner.address,
       [owner.address],
@@ -643,7 +643,9 @@ describe(" RSC Prepayment tests", function () {
     const RSCPrepaymentFeeFactory = await ethers.getContractFactory(
       "RSCPrepaymentFactory"
     );
-    const rscPrepaymentFeeFactory = await RSCPrepaymentFeeFactory.deploy();
+    const rscPrepaymentFeeFactory = await RSCPrepaymentFeeFactory.deploy(
+      owner.address
+    );
     await rscPrepaymentFeeFactory.deployed();
 
     await expect(
@@ -755,7 +757,7 @@ describe(" RSC Prepayment tests", function () {
       "RSCPrepaymentFactory"
     );
     const rscPrepaymentCreationIdFactory =
-      await RSCPrepaymentCreationIdFactory.deploy();
+      await RSCPrepaymentCreationIdFactory.deploy(owner.address);
     await rscPrepaymentCreationIdFactory.deployed();
 
     const EthPriceFeedMock = await ethers.getContractFactory(

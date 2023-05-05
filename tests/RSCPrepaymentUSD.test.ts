@@ -41,7 +41,9 @@ describe("RSC Prepayment USD tests", function () {
     const RSCPrepaymentUsdFactory = await ethers.getContractFactory(
       "RSCPrepaymentFactory"
     );
-    const rscPrepaymentUsdFactory = await RSCPrepaymentUsdFactory.deploy();
+    const rscPrepaymentUsdFactory = await RSCPrepaymentUsdFactory.deploy(
+      owner.address
+    );
 
     const tx = await rscPrepaymentUsdFactory.createRSCPrepaymentUsd(
       {
@@ -499,7 +501,9 @@ describe("RSC Prepayment USD tests", function () {
     const RSCPrepaymentFeeFactory = await ethers.getContractFactory(
       "RSCPrepaymentFactory"
     );
-    const rscPrepaymentFeeFactory = await RSCPrepaymentFeeFactory.deploy();
+    const rscPrepaymentFeeFactory = await RSCPrepaymentFeeFactory.deploy(
+      owner.address
+    );
     await rscPrepaymentFeeFactory.deployed();
 
     const UsdPriceFeedMock = await ethers.getContractFactory(
@@ -629,7 +633,7 @@ describe("RSC Prepayment USD tests", function () {
       "RSCPrepaymentFactory"
     );
     const rscPrepaymentCreationIdFactory =
-      await RSCPrepaymentCreationIdFactory.deploy();
+      await RSCPrepaymentCreationIdFactory.deploy(owner.address);
     await rscPrepaymentCreationIdFactory.deployed();
 
     const UsdPriceFeedMock = await ethers.getContractFactory(
