@@ -57,14 +57,12 @@ contract RSCPrepaymentUsd is Initializable, BaseRSCPrepayment {
         platformFee = _settings.platformFee;
         nativeTokenUsdPriceFeed = AggregatorV3Interface(_nativeTokenUsdPriceFeed);
         _transferOwnership(_settings.owner);
-        uint256 supportedErc20Length = _settings.supportedErc20addresses.length;
-        if (supportedErc20Length != _settings.erc20PriceFeeds.length) {
-            revert InconsistentDataLengthError();
-        }
+
+        uint256 supportedErc20Length = _settings.tokens.length;
         for (uint256 i = 0; i < supportedErc20Length; ) {
             _setTokenUsdPriceFeed(
-                _settings.supportedErc20addresses[i],
-                _settings.erc20PriceFeeds[i]
+                _settings.tokens[i].tokenAddress,
+                _settings.tokens[i].tokenPriceFeed
             );
             unchecked {
                 i++;

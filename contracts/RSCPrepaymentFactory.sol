@@ -9,7 +9,7 @@ import "./RSCPrepayment.sol";
 import "./RSCPrepaymentUSD.sol";
 
 // Throw when Fee Percentage is more than 100%
-error InvalidFeePercentage();
+error InvalidFeePercentage(uint256);
 
 contract RSCPrepaymentFactory is Ownable {
     /// Measurement unit 10000000 = 100%.
@@ -40,11 +40,11 @@ contract RSCPrepaymentFactory is Ownable {
         uint256 investedAmount;
         uint256 interestRate;
         uint256 residualInterestRate;
-        /// Initial array of recipients addresses.
+        /// Initial array of recipients addresses & percentages.
         BaseRSCPrepayment.RecipientData[] recipients;
-        IERC20[] supportedErc20addresses;
-        address[] erc20PriceFeeds;
-        bytes32 creationId;
+        /// Initial array of erc20 tokens and price feed addresses.
+        BaseRSCPrepayment.TokenData[] tokens;
+        bytes32 contractId;
     }
 
     event NewRSCPrepayment(
@@ -106,7 +106,7 @@ contract RSCPrepaymentFactory is Ownable {
                 _data.interestRate,
                 _data.residualInterestRate,
                 _data.recipients,
-                _data.creationId,
+                _data.contractId,
                 _deployer
             )
         );
@@ -136,12 +136,11 @@ contract RSCPrepaymentFactory is Ownable {
      * @return Address of new contract
      */
     function createRSCPrepayment(
-        RSCPrepaymentCreateData memory _data
+        RSCPrepaymentCreateData memory _data,
+        bytes32 creationId
     ) external returns (address) {
-        // check and register creationId
-        bytes32 creationId = _data.creationId;
         address payable clone;
-        if (creationId != bytes32(0)) {
+        if (_data.contractId != bytes32(0)) {
             bytes32 salt = _getSalt(_data, msg.sender);
             clone = payable(
                 Clones.cloneDeterministic(address(contractImplementation), salt)
@@ -159,8 +158,7 @@ contract RSCPrepaymentFactory is Ownable {
                 _data.isAutoNativeCurrencyDistribution,
                 _data.minAutoDistributeAmount,
                 platformFee,
-                _data.supportedErc20addresses,
-                _data.erc20PriceFeeds
+                _data.tokens
             );
 
         RSCPrepayment(clone).initialize(
@@ -196,12 +194,11 @@ contract RSCPrepaymentFactory is Ownable {
      */
     function createRSCPrepaymentUsd(
         RSCPrepaymentCreateData memory _data,
-        address nativeTokenUsdPriceFeed
+        address nativeTokenUsdPriceFeed,
+        bytes32 creationId
     ) external returns (address) {
-        // check and register creationId
-        bytes32 creationId = _data.creationId;
         address payable clone;
-        if (creationId != bytes32(0)) {
+        if (_data.contractId != bytes32(0)) {
             bytes32 salt = _getSalt(_data, msg.sender);
             clone = payable(
                 Clones.cloneDeterministic(address(contractImplementationUsd), salt)
@@ -219,8 +216,7 @@ contract RSCPrepaymentFactory is Ownable {
                 _data.isAutoNativeCurrencyDistribution,
                 _data.minAutoDistributeAmount,
                 platformFee,
-                _data.supportedErc20addresses,
-                _data.erc20PriceFeeds
+                _data.tokens
             );
 
         RSCPrepaymentUsd(clone).initialize(
@@ -257,7 +253,7 @@ contract RSCPrepaymentFactory is Ownable {
      */
     function setPlatformFee(uint256 _fee) external onlyOwner {
         if (_fee > BASIS_POINT) {
-            revert InvalidFeePercentage();
+            revert InvalidFeePercentage(_fee);
         }
         emit PlatformFee(_fee);
         platformFee = _fee;

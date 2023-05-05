@@ -99,12 +99,6 @@ event TokenPriceFeedSet(address token, address priceFeed);
 error ImmutableRecipientsError();
 ```
 
-### InconsistentDataLengthError error
-
-```solidity
-error InconsistentDataLengthError();
-```
-
 ### InvalidPercentageError error
 
 ```solidity
@@ -188,7 +182,7 @@ function factory() external view returns (address);
 
 Factory address.
 
-### initialize (0xfa360fc8)
+### initialize (0xe782545c)
 
 ```solidity
 function initialize(

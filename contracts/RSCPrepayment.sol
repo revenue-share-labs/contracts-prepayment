@@ -51,14 +51,12 @@ contract RSCPrepayment is BaseRSCPrepayment {
         factory = IFeeFactory(msg.sender);
         platformFee = _settings.platformFee;
         _transferOwnership(_settings.owner);
-        uint256 supportedErc20Length = _settings.supportedErc20addresses.length;
-        if (supportedErc20Length != _settings.erc20PriceFeeds.length) {
-            revert InconsistentDataLengthError();
-        }
+
+        uint256 supportedErc20Length = _settings.tokens.length;
         for (uint256 i = 0; i < supportedErc20Length; ) {
             _setTokenNativeTokenPriceFeed(
-                _settings.supportedErc20addresses[i],
-                _settings.erc20PriceFeeds[i]
+                _settings.tokens[i].tokenAddress,
+                _settings.tokens[i].tokenPriceFeed
             );
             unchecked {
                 i++;
